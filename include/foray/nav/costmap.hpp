@@ -22,10 +22,8 @@
 #include "foray/nav/costmap_view.hpp"
 #include "foray/nav/types.hpp"
 
-namespace foray
-{
-namespace nav
-{
+namespace foray {
+namespace nav {
 
 /// 分层代价图：把静态层、禁行层、膨胀层、动态层叠成一张**可读快照**。
 ///
@@ -39,58 +37,71 @@ namespace nav
 /// - `kCostUnknown` 永远是"不可通行"，膨胀**不会**把未知刷成可走；
 /// - 膨胀只降低"贴墙"的风险，不会把致死格改成可走；
 /// - 所有写入操作都在构造期/装配期完成，算法只读。
-class Costmap : public CostmapView
-{
-public:
-  Costmap() = default;
+class Costmap : public CostmapView {
+  public:
+    Costmap() = default;
 
-  /// 按栅格尺寸初始化。分辨率必须为正。
-  bool init(int width, int height, double resolution, const Vec2 & origin, std::string * error);
+    /// 按栅格尺寸初始化。分辨率必须为正。
+    bool init(int width, int height, double resolution, const Vec2& origin, std::string* error);
 
-  /// 静态层：整张拷入（要求尺寸一致）。
-  bool set_static_layer(const CostmapView & static_map, std::string * error);
+    /// 静态层：整张拷入（要求尺寸一致）。
+    bool set_static_layer(const CostmapView& static_map, std::string* error);
 
-  /// 禁行层：把多边形内部刷成致死（测试与装配用）。
-  void fill_polygon(const std::vector<Vec2> & polygon, uint8_t cost = kCostLethal);
+    /// 禁行层：把多边形内部刷成致死（测试与装配用）。
+    void fill_polygon(const std::vector<Vec2>& polygon, uint8_t cost = kCostLethal);
 
-  /// 膨胀层：从所有致死格出发做倒角距离变换，按半径给衰减代价。
-  /// @param inscribed_radius 内切半径（米）：该距离内一律致死
-  /// @param inflation_radius 膨胀半径（米）：超出该距离不加代价
-  /// @param cost_scaling     衰减系数，越大衰减越快
-  void inflate(double inscribed_radius, double inflation_radius, double cost_scaling);
+    /// 膨胀层：从所有致死格出发做倒角距离变换，按半径给衰减代价。
+    /// @param inscribed_radius 内切半径（米）：该距离内一律致死
+    /// @param inflation_radius 膨胀半径（米）：超出该距离不加代价
+    /// @param cost_scaling     衰减系数，越大衰减越快
+    void inflate(double inscribed_radius, double inflation_radius, double cost_scaling);
 
-  /// 动态层：按圆心与半径把格子刷成致死（不做敌我判断，见设计 §2.1）。
-  void stamp_obstacles(const std::vector<DynamicObstacle> & obstacles);
+    /// 动态层：按圆心与半径把格子刷成致死（不做敌我判断，见设计 §2.1）。
+    void stamp_obstacles(const std::vector<DynamicObstacle>& obstacles);
 
-  // ---- CostmapView ----
-  double resolution() const override { return resolution_; }
-  int width() const override { return width_; }
-  int height() const override { return height_; }
-  Vec2 origin() const override { return origin_; }
-  int64_t stamp_ns() const override { return stamp_ns_; }
-  const uint8_t * data() const override { return costs_.empty() ? nullptr : costs_.data(); }
-  int stride() const override { return width_; }
-  uint8_t cost_at(int ix, int iy) const override;
-  bool world_to_grid(const Vec2 & world, int * ix, int * iy) const override;
-  bool grid_to_world(int ix, int iy, Vec2 * world) const override;
+    // ---- CostmapView ----
+    double resolution() const override {
+        return resolution_;
+    }
+    int width() const override {
+        return width_;
+    }
+    int height() const override {
+        return height_;
+    }
+    Vec2 origin() const override {
+        return origin_;
+    }
+    int64_t stamp_ns() const override {
+        return stamp_ns_;
+    }
+    const uint8_t* data() const override {
+        return costs_.empty() ? nullptr : costs_.data();
+    }
+    int stride() const override {
+        return width_;
+    }
+    uint8_t cost_at(int ix, int iy) const override;
+    bool world_to_grid(const Vec2& world, int* ix, int* iy) const override;
+    bool grid_to_world(int ix, int iy, Vec2* world) const override;
 
-  /// 直接改写某一格（测试与装配用）。
-  void set_cost(int ix, int iy, uint8_t cost);
+    /// 直接改写某一格（测试与装配用）。
+    void set_cost(int ix, int iy, uint8_t cost);
 
-  /// 统计致死格数量（测试与可观测用）。
-  int lethal_count() const;
+    /// 统计致死格数量（测试与可观测用）。
+    int lethal_count() const;
 
-private:
-  double resolution_{0.05};
-  Vec2 origin_{};
-  int width_{0};
-  int height_{0};
-  std::vector<uint8_t> costs_{};
-  /// 最近一次写入层的时间（纳秒），作为代价图版本。
-  int64_t stamp_ns_{0};
+  private:
+    double resolution_{0.05};
+    Vec2 origin_{};
+    int width_{0};
+    int height_{0};
+    std::vector<uint8_t> costs_{};
+    /// 最近一次写入层的时间（纳秒），作为代价图版本。
+    int64_t stamp_ns_{0};
 };
 
-}  // namespace nav
-}  // namespace foray
+} // namespace nav
+} // namespace foray
 
-#endif  // FORAY__NAV__COSTMAP_HPP_
+#endif // FORAY__NAV__COSTMAP_HPP_

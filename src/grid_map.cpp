@@ -23,340 +23,370 @@
 #include <string>
 #include <vector>
 
-namespace foray
-{
-namespace nav
-{
-namespace
-{
+namespace foray {
+namespace nav {
+namespace {
 
-int64_t now_ns()
-{
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(
-    std::chrono::system_clock::now().time_since_epoch()).count();
+int64_t now_ns() {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+               std::chrono::system_clock::now().time_since_epoch())
+        .count();
 }
 
-std::string trim(const std::string & text)
-{
-  const auto begin = text.find_first_not_of(" \t\r\n");
-  if (begin == std::string::npos) {
-    return std::string();
-  }
-  const auto end = text.find_last_not_of(" \t\r\n");
-  return text.substr(begin, end - begin + 1);
-}
-
-bool parse_double(const std::string & text, double * out)
-{
-  try {
-    size_t consumed = 0;
-    const double value = std::stod(text, &consumed);
-    if (consumed == 0) {
-      return false;
+std::string trim(const std::string& text) {
+    const auto begin = text.find_first_not_of(" \t\r\n");
+    if (begin == std::string::npos) {
+        return std::string();
     }
-    *out = value;
+    const auto end = text.find_last_not_of(" \t\r\n");
+    return text.substr(begin, end - begin + 1);
+}
+
+bool parse_double(const std::string& text, double* out) {
+    try {
+        size_t consumed = 0;
+        const double value = std::stod(text, &consumed);
+        if (consumed == 0) {
+            return false;
+        }
+        *out = value;
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+bool read_file(const std::string& path, std::string* out, std::string* error) {
+    std::ifstream stream(path, std::ios::binary);
+    if (!stream) {
+        if (error) {
+            *error = "cannot open file: " + path;
+        }
+        return false;
+    }
+    std::ostringstream buffer;
+    buffer << stream.rdbuf();
+    *out = buffer.str();
     return true;
-  } catch (const std::exception &) {
-    return false;
-  }
-}
-
-bool read_file(const std::string & path, std::string * out, std::string * error)
-{
-  std::ifstream stream(path, std::ios::binary);
-  if (!stream) {
-    if (error) {
-      *error = "cannot open file: " + path;
-    }
-    return false;
-  }
-  std::ostringstream buffer;
-  buffer << stream.rdbuf();
-  *out = buffer.str();
-  return true;
 }
 
 /// 极简 PGM 解析：支持 P2（ASCII）与 P5（二进制），跳过 # 注释。
-bool parse_pgm(
-  const std::vector<uint8_t> & bytes, int * width, int * height,
-  std::vector<uint8_t> * pixels, std::string * error)
-{
-  if (bytes.empty()) {
-    if (error) {*error = "pgm is empty";}
-    return false;
-  }
-  // 头部是 ASCII，找 maxval 之后的第一个字节作为二进制起点。
-  size_t pos = 0;
-  auto read_token = [&bytes, &pos]() {
-      while (pos < bytes.size()) {
-        const uint8_t c = bytes[pos];
-        if (c == '#') {
-          while (pos < bytes.size() && bytes[pos] != '\n') {++pos;}
-        } else if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
-          ++pos;
-        } else {
-          break;
+bool parse_pgm(const std::vector<uint8_t>& bytes, int* width, int* height,
+               std::vector<uint8_t>* pixels, std::string* error) {
+    if (bytes.empty()) {
+        if (error) {
+            *error = "pgm is empty";
         }
-      }
-      const size_t begin = pos;
-      while (pos < bytes.size()) {
-        const uint8_t c = bytes[pos];
-        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {break;}
-        ++pos;
-      }
-      return std::string(bytes.begin() + static_cast<long>(begin), bytes.begin() + static_cast<long>(pos));
+        return false;
+    }
+    // 头部是 ASCII，找 maxval 之后的第一个字节作为二进制起点。
+    size_t pos = 0;
+    auto read_token = [&bytes, &pos]() {
+        while (pos < bytes.size()) {
+            const uint8_t c = bytes[pos];
+            if (c == '#') {
+                while (pos < bytes.size() && bytes[pos] != '\n') {
+                    ++pos;
+                }
+            } else if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+                ++pos;
+            } else {
+                break;
+            }
+        }
+        const size_t begin = pos;
+        while (pos < bytes.size()) {
+            const uint8_t c = bytes[pos];
+            if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+                break;
+            }
+            ++pos;
+        }
+        return std::string(bytes.begin() + static_cast<long>(begin),
+                           bytes.begin() + static_cast<long>(pos));
     };
 
-  const std::string magic = read_token();
-  const std::string s_width = read_token();
-  const std::string s_height = read_token();
-  const std::string s_maxval = read_token();
-  if (magic != "P5" && magic != "P2") {
-    if (error) {*error = "unsupported pgm magic: " + magic;}
-    return false;
-  }
-  int w = 0;
-  int h = 0;
-  int maxval = 0;
-  try {
-    w = std::stoi(s_width);
-    h = std::stoi(s_height);
-    maxval = std::stoi(s_maxval);
-  } catch (const std::exception &) {
-    if (error) {*error = "bad pgm header";}
-    return false;
-  }
-  if (w <= 0 || h <= 0 || maxval <= 0 || maxval > 255) {
-    if (error) {*error = "unsupported pgm dimensions or maxval";}
-    return false;
-  }
-
-  const size_t count = static_cast<size_t>(w) * static_cast<size_t>(h);
-  pixels->assign(count, 0);
-
-  if (magic == "P2") {
-    for (size_t i = 0; i < count; ++i) {
-      const std::string token = read_token();
-      try {
-        (*pixels)[i] = static_cast<uint8_t>(std::stoi(token));
-      } catch (const std::exception &) {
-        if (error) {*error = "bad pgm pixel data";}
+    const std::string magic = read_token();
+    const std::string s_width = read_token();
+    const std::string s_height = read_token();
+    const std::string s_maxval = read_token();
+    if (magic != "P5" && magic != "P2") {
+        if (error) {
+            *error = "unsupported pgm magic: " + magic;
+        }
         return false;
-      }
     }
-  } else {
-    // P5：maxval 之后恰好一个空白字符，然后是原始字节。
-    if (pos >= bytes.size()) {
-      if (error) {*error = "pgm pixel data missing";}
-      return false;
-    }
-    ++pos;  // 跳过 maxval 后的单个空白
-    if (bytes.size() - pos < count) {
-      if (error) {*error = "pgm pixel data truncated";}
-      return false;
-    }
-    std::copy(bytes.begin() + static_cast<long>(pos), bytes.begin() + static_cast<long>(pos + count), pixels->begin());
-  }
-
-  *width = w;
-  *height = h;
-  return true;
-}
-
-}  // namespace
-
-bool parse_map_meta(const std::string & yaml_text, MapMeta * meta, std::string * error)
-{
-  if (meta == nullptr) {
-    if (error) {*error = "meta is null";}
-    return false;
-  }
-  MapMeta parsed;
-  std::istringstream stream(yaml_text);
-  std::string line;
-  bool has_resolution = false;
-  while (std::getline(stream, line)) {
-    const std::string text = trim(line);
-    if (text.empty() || text[0] == '#') {continue;}
-    const auto colon = text.find(':');
-    if (colon == std::string::npos) {continue;}
-    const std::string key = trim(text.substr(0, colon));
-    std::string value = trim(text.substr(colon + 1));
-    if (!value.empty() && value.front() == '"' && value.back() == '"' && value.size() >= 2) {
-      value = value.substr(1, value.size() - 2);
-    }
-    if (key == "image") {
-      parsed.image_path = value;
-    } else if (key == "resolution") {
-      if (!parse_double(value, &parsed.resolution)) {
-        if (error) {*error = "bad resolution";}
+    int w = 0;
+    int h = 0;
+    int maxval = 0;
+    try {
+        w = std::stoi(s_width);
+        h = std::stoi(s_height);
+        maxval = std::stoi(s_maxval);
+    } catch (const std::exception&) {
+        if (error) {
+            *error = "bad pgm header";
+        }
         return false;
-      }
-      has_resolution = true;
-    } else if (key == "negate") {
-      parsed.negate = (value == "1" || value == "true") ? 1 : 0;
-    } else if (key == "occupied_thresh") {
-      if (!parse_double(value, &parsed.occupied_thresh)) {
-        if (error) {*error = "bad occupied_thresh";}
-        return false;
-      }
-    } else if (key == "free_thresh") {
-      if (!parse_double(value, &parsed.free_thresh)) {
-        if (error) {*error = "bad free_thresh";}
-        return false;
-      }
-    } else if (key == "origin") {
-      // 形如 [x, y, yaw]
-      std::string cleaned = value;
-      const char * drop = "[]";
-      for (const char * c = drop; *c != '\0'; ++c) {
-        cleaned.erase(std::remove(cleaned.begin(), cleaned.end(), *c), cleaned.end());
-      }
-      std::istringstream numbers(cleaned);
-      std::string item;
-      std::vector<double> values;
-      while (std::getline(numbers, item, ',')) {
-        double v = 0.0;
-        if (parse_double(trim(item), &v)) {values.push_back(v);}
-      }
-      if (values.size() >= 2) {
-        parsed.origin_x = values[0];
-        parsed.origin_y = values[1];
-        parsed.origin_yaw = values.size() >= 3 ? values[2] : 0.0;
-      }
     }
-  }
-
-  if (parsed.image_path.empty()) {
-    if (error) {*error = "yaml has no image field";}
-    return false;
-  }
-  if (!has_resolution || parsed.resolution <= 0.0) {
-    if (error) {*error = "yaml has no valid resolution";}
-    return false;
-  }
-  if (std::fabs(parsed.origin_yaw) > 1e-9) {
-    if (error) {*error = "rotated map origin is not supported";}
-    return false;
-  }
-  *meta = parsed;
-  return true;
-}
-
-bool GridMap::load_from_yaml(const std::string & yaml_path, std::string * error)
-{
-  std::string yaml_text;
-  if (!read_file(yaml_path, &yaml_text, error)) {
-    return false;
-  }
-  MapMeta meta;
-  if (!parse_map_meta(yaml_text, &meta, error)) {
-    return false;
-  }
-  std::string image_path = meta.image_path;
-  if (image_path.empty() || image_path.front() != '/') {
-    const auto slash = yaml_path.find_last_of('/');
-    const std::string dir = (slash == std::string::npos) ? std::string() : yaml_path.substr(0, slash + 1);
-    image_path = dir + meta.image_path;
-  }
-  std::string raw;
-  if (!read_file(image_path, &raw, error)) {
-    return false;
-  }
-  const std::vector<uint8_t> bytes(raw.begin(), raw.end());
-  return load_from_pgm_bytes(bytes, meta, error);
-}
-
-bool GridMap::load_from_pgm_bytes(
-  const std::vector<uint8_t> & pgm_bytes, const MapMeta & meta, std::string * error)
-{
-  int width = 0;
-  int height = 0;
-  std::vector<uint8_t> pixels;
-  if (!parse_pgm(pgm_bytes, &width, &height, &pixels, error)) {
-    return false;
-  }
-  return build_from_pixels(pixels, width, height, meta, error);
-}
-
-bool GridMap::build_from_pixels(
-  const std::vector<uint8_t> & pixels, int width, int height,
-  const MapMeta & meta, std::string * error)
-{
-  if (width <= 0 || height <= 0) {
-    if (error) {*error = "bad map size";}
-    return false;
-  }
-  if (pixels.size() < static_cast<size_t>(width) * static_cast<size_t>(height)) {
-    if (error) {*error = "pixel count mismatch";}
-    return false;
-  }
-  meta_ = meta;
-  width_ = width;
-  height_ = height;
-  costs_.assign(static_cast<size_t>(width) * static_cast<size_t>(height), kCostUnknown);
-
-  for (int iy = 0; iy < height; ++iy) {
-    // PGM 第 0 行是地图最上面一行，栅格 iy 从下往上，所以这里翻转。
-    const int src_row = height - 1 - iy;
-    for (int ix = 0; ix < width; ++ix) {
-      const uint8_t color = pixels[static_cast<size_t>(src_row) * static_cast<size_t>(width) +
-        static_cast<size_t>(ix)];
-      double occupancy = 0.0;
-      if (meta.negate != 0) {
-        occupancy = static_cast<double>(color) / 255.0;
-      } else {
-        occupancy = (255.0 - static_cast<double>(color)) / 255.0;
-      }
-      uint8_t cost = kCostUnknown;
-      if (occupancy > meta.occupied_thresh) {
-        cost = kCostLethal;
-      } else if (occupancy < meta.free_thresh) {
-        cost = kCostFree;
-      }
-      costs_[static_cast<size_t>(iy) * static_cast<size_t>(width) + static_cast<size_t>(ix)] = cost;
+    if (w <= 0 || h <= 0 || maxval <= 0 || maxval > 255) {
+        if (error) {
+            *error = "unsupported pgm dimensions or maxval";
+        }
+        return false;
     }
-  }
 
-  loaded_ = true;
-  stamp_ns_ = now_ns();
-  return true;
+    const size_t count = static_cast<size_t>(w) * static_cast<size_t>(h);
+    pixels->assign(count, 0);
+
+    if (magic == "P2") {
+        for (size_t i = 0; i < count; ++i) {
+            const std::string token = read_token();
+            try {
+                (*pixels)[i] = static_cast<uint8_t>(std::stoi(token));
+            } catch (const std::exception&) {
+                if (error) {
+                    *error = "bad pgm pixel data";
+                }
+                return false;
+            }
+        }
+    } else {
+        // P5：maxval 之后恰好一个空白字符，然后是原始字节。
+        if (pos >= bytes.size()) {
+            if (error) {
+                *error = "pgm pixel data missing";
+            }
+            return false;
+        }
+        ++pos; // 跳过 maxval 后的单个空白
+        if (bytes.size() - pos < count) {
+            if (error) {
+                *error = "pgm pixel data truncated";
+            }
+            return false;
+        }
+        std::copy(bytes.begin() + static_cast<long>(pos),
+                  bytes.begin() + static_cast<long>(pos + count), pixels->begin());
+    }
+
+    *width = w;
+    *height = h;
+    return true;
 }
 
-uint8_t GridMap::cost_at(int ix, int iy) const
-{
-  if (!loaded_ || ix < 0 || iy < 0 || ix >= width_ || iy >= height_) {
-    return kCostUnknown;
-  }
-  return costs_[static_cast<size_t>(iy) * static_cast<size_t>(width_) + static_cast<size_t>(ix)];
+} // namespace
+
+bool parse_map_meta(const std::string& yaml_text, MapMeta* meta, std::string* error) {
+    if (meta == nullptr) {
+        if (error) {
+            *error = "meta is null";
+        }
+        return false;
+    }
+    MapMeta parsed;
+    std::istringstream stream(yaml_text);
+    std::string line;
+    bool has_resolution = false;
+    while (std::getline(stream, line)) {
+        const std::string text = trim(line);
+        if (text.empty() || text[0] == '#') {
+            continue;
+        }
+        const auto colon = text.find(':');
+        if (colon == std::string::npos) {
+            continue;
+        }
+        const std::string key = trim(text.substr(0, colon));
+        std::string value = trim(text.substr(colon + 1));
+        if (!value.empty() && value.front() == '"' && value.back() == '"' && value.size() >= 2) {
+            value = value.substr(1, value.size() - 2);
+        }
+        if (key == "image") {
+            parsed.image_path = value;
+        } else if (key == "resolution") {
+            if (!parse_double(value, &parsed.resolution)) {
+                if (error) {
+                    *error = "bad resolution";
+                }
+                return false;
+            }
+            has_resolution = true;
+        } else if (key == "negate") {
+            parsed.negate = (value == "1" || value == "true") ? 1 : 0;
+        } else if (key == "occupied_thresh") {
+            if (!parse_double(value, &parsed.occupied_thresh)) {
+                if (error) {
+                    *error = "bad occupied_thresh";
+                }
+                return false;
+            }
+        } else if (key == "free_thresh") {
+            if (!parse_double(value, &parsed.free_thresh)) {
+                if (error) {
+                    *error = "bad free_thresh";
+                }
+                return false;
+            }
+        } else if (key == "origin") {
+            // 形如 [x, y, yaw]
+            std::string cleaned = value;
+            const char* drop = "[]";
+            for (const char* c = drop; *c != '\0'; ++c) {
+                cleaned.erase(std::remove(cleaned.begin(), cleaned.end(), *c), cleaned.end());
+            }
+            std::istringstream numbers(cleaned);
+            std::string item;
+            std::vector<double> values;
+            while (std::getline(numbers, item, ',')) {
+                double v = 0.0;
+                if (parse_double(trim(item), &v)) {
+                    values.push_back(v);
+                }
+            }
+            if (values.size() >= 2) {
+                parsed.origin_x = values[0];
+                parsed.origin_y = values[1];
+                parsed.origin_yaw = values.size() >= 3 ? values[2] : 0.0;
+            }
+        }
+    }
+
+    if (parsed.image_path.empty()) {
+        if (error) {
+            *error = "yaml has no image field";
+        }
+        return false;
+    }
+    if (!has_resolution || parsed.resolution <= 0.0) {
+        if (error) {
+            *error = "yaml has no valid resolution";
+        }
+        return false;
+    }
+    if (std::fabs(parsed.origin_yaw) > 1e-9) {
+        if (error) {
+            *error = "rotated map origin is not supported";
+        }
+        return false;
+    }
+    *meta = parsed;
+    return true;
 }
 
-bool GridMap::world_to_grid(const Vec2 & world, int * ix, int * iy) const
-{
-  if (!loaded_ || ix == nullptr || iy == nullptr) {
-    return false;
-  }
-  const double gx = (world.x - meta_.origin_x) / meta_.resolution;
-  const double gy = (world.y - meta_.origin_y) / meta_.resolution;
-  const int cx = static_cast<int>(std::floor(gx));
-  const int cy = static_cast<int>(std::floor(gy));
-  if (cx < 0 || cy < 0 || cx >= width_ || cy >= height_) {
-    return false;
-  }
-  *ix = cx;
-  *iy = cy;
-  return true;
+bool GridMap::load_from_yaml(const std::string& yaml_path, std::string* error) {
+    std::string yaml_text;
+    if (!read_file(yaml_path, &yaml_text, error)) {
+        return false;
+    }
+    MapMeta meta;
+    if (!parse_map_meta(yaml_text, &meta, error)) {
+        return false;
+    }
+    std::string image_path = meta.image_path;
+    if (image_path.empty() || image_path.front() != '/') {
+        const auto slash = yaml_path.find_last_of('/');
+        const std::string dir =
+            (slash == std::string::npos) ? std::string() : yaml_path.substr(0, slash + 1);
+        image_path = dir + meta.image_path;
+    }
+    std::string raw;
+    if (!read_file(image_path, &raw, error)) {
+        return false;
+    }
+    const std::vector<uint8_t> bytes(raw.begin(), raw.end());
+    return load_from_pgm_bytes(bytes, meta, error);
 }
 
-bool GridMap::grid_to_world(int ix, int iy, Vec2 * world) const
-{
-  if (!loaded_ || world == nullptr || ix < 0 || iy < 0 || ix >= width_ || iy >= height_) {
-    return false;
-  }
-  world->x = meta_.origin_x + (static_cast<double>(ix) + 0.5) * meta_.resolution;
-  world->y = meta_.origin_y + (static_cast<double>(iy) + 0.5) * meta_.resolution;
-  return true;
+bool GridMap::load_from_pgm_bytes(const std::vector<uint8_t>& pgm_bytes, const MapMeta& meta,
+                                  std::string* error) {
+    int width = 0;
+    int height = 0;
+    std::vector<uint8_t> pixels;
+    if (!parse_pgm(pgm_bytes, &width, &height, &pixels, error)) {
+        return false;
+    }
+    return build_from_pixels(pixels, width, height, meta, error);
 }
 
-}  // namespace nav
-}  // namespace foray
+bool GridMap::build_from_pixels(const std::vector<uint8_t>& pixels, int width, int height,
+                                const MapMeta& meta, std::string* error) {
+    if (width <= 0 || height <= 0) {
+        if (error) {
+            *error = "bad map size";
+        }
+        return false;
+    }
+    if (pixels.size() < static_cast<size_t>(width) * static_cast<size_t>(height)) {
+        if (error) {
+            *error = "pixel count mismatch";
+        }
+        return false;
+    }
+    meta_ = meta;
+    width_ = width;
+    height_ = height;
+    costs_.assign(static_cast<size_t>(width) * static_cast<size_t>(height), kCostUnknown);
+
+    for (int iy = 0; iy < height; ++iy) {
+        // PGM 第 0 行是地图最上面一行，栅格 iy 从下往上，所以这里翻转。
+        const int src_row = height - 1 - iy;
+        for (int ix = 0; ix < width; ++ix) {
+            const uint8_t color = pixels[static_cast<size_t>(src_row) * static_cast<size_t>(width) +
+                                         static_cast<size_t>(ix)];
+            double occupancy = 0.0;
+            if (meta.negate != 0) {
+                occupancy = static_cast<double>(color) / 255.0;
+            } else {
+                occupancy = (255.0 - static_cast<double>(color)) / 255.0;
+            }
+            uint8_t cost = kCostUnknown;
+            if (occupancy > meta.occupied_thresh) {
+                cost = kCostLethal;
+            } else if (occupancy < meta.free_thresh) {
+                cost = kCostFree;
+            }
+            costs_[static_cast<size_t>(iy) * static_cast<size_t>(width) + static_cast<size_t>(ix)] =
+                cost;
+        }
+    }
+
+    loaded_ = true;
+    stamp_ns_ = now_ns();
+    return true;
+}
+
+uint8_t GridMap::cost_at(int ix, int iy) const {
+    if (!loaded_ || ix < 0 || iy < 0 || ix >= width_ || iy >= height_) {
+        return kCostUnknown;
+    }
+    return costs_[static_cast<size_t>(iy) * static_cast<size_t>(width_) + static_cast<size_t>(ix)];
+}
+
+bool GridMap::world_to_grid(const Vec2& world, int* ix, int* iy) const {
+    if (!loaded_ || ix == nullptr || iy == nullptr) {
+        return false;
+    }
+    const double gx = (world.x - meta_.origin_x) / meta_.resolution;
+    const double gy = (world.y - meta_.origin_y) / meta_.resolution;
+    const int cx = static_cast<int>(std::floor(gx));
+    const int cy = static_cast<int>(std::floor(gy));
+    if (cx < 0 || cy < 0 || cx >= width_ || cy >= height_) {
+        return false;
+    }
+    *ix = cx;
+    *iy = cy;
+    return true;
+}
+
+bool GridMap::grid_to_world(int ix, int iy, Vec2* world) const {
+    if (!loaded_ || world == nullptr || ix < 0 || iy < 0 || ix >= width_ || iy >= height_) {
+        return false;
+    }
+    world->x = meta_.origin_x + (static_cast<double>(ix) + 0.5) * meta_.resolution;
+    world->y = meta_.origin_y + (static_cast<double>(iy) + 0.5) * meta_.resolution;
+    return true;
+}
+
+} // namespace nav
+} // namespace foray
