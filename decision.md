@@ -198,3 +198,32 @@ Alternatives:
 
 Rejected:
 - 把到达判定塞进控制器：控制器拿不到 `NavGoal`，会逼着实现各自造一套容差
+
+---
+
+## Decision
+
+Date: 2026-11-02
+
+Context: PR #1 的评审（RyanZhangK）提了两条：**保留不同兵种的接口**
+（队内计划让半自动步兵与重装复用本仓的规划器），以及 **CI 没有全部通过**。
+
+Decision:
+
+1. **兵种接口预留**：`types.hpp` 增加 `enum class UnitKind { kSentinel, kInfantry, kHeavy }`，
+   `Capability` 增加 `kind`（默认 `kSentinel`）。本期**只消费哨兵**的数值；
+   步兵 / 重装只用于证明「同一套接口换数值就够」，不实现它们的策略。
+2. **`.clang-format` 入库**：从组织风格拷入仓库根目录（4 空格、`PointerAlignment: Left`、
+   列宽 100），并把全部源码按它重排。`lint-c` 失败的原因是仓库缺这个文件，
+   clang-format 会回退到 LLVM 默认（2 空格 + 右对齐指针），把手写代码全部判成违规。
+
+Reason:
+- 评审关心的是「将来要不要改接口」，不是「现在要不要做步兵」——所以只加字段、不加行为。
+- 长期红灯会让人习惯性忽略 CI（CI 模板注释里也写了这条），必须在本次 PR 内修掉。
+
+Alternatives:
+- 等真要接步兵时再加 `kind`：届时上游已按「哨兵专用结构体」接线，改动面更大。
+- 在 CI 里塞 `-style=...` 或删掉 `lint-c`：等于绕过契约，不采纳。
+
+Rejected:
+- 把 `UnitKind` 做成策略基类 / 工厂：本期没有任何按兵种分叉的行为，属于超前抽象。

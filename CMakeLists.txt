@@ -58,6 +58,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 add_test(NAME pursuit_controller_test COMMAND pursuit_controller_test)
 
+add_executable(types_test test/types_test.cpp)
+target_link_libraries(types_test PRIVATE foray_navigation)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(types_test PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+add_test(NAME types_test COMMAND types_test)
+
 include(GNUInstallDirs)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS foray_navigation EXPORT foray_navigationTargets)

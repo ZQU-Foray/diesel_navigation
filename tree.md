@@ -28,16 +28,17 @@
 │   ├── grid_map_test.cpp    地图独立测试（不依赖测试框架）
 │   ├── costmap_test.cpp     代价图分层与膨胀测试
 │   ├── astar_planner_test.cpp  A* 用例（含隧道偏好）
-│   └── pursuit_controller_test.cpp  控制器用例
+│   ├── pursuit_controller_test.cpp  控制器用例
+│   └── types_test.cpp       兵种接口预留（只换数值、不改接口）
 ├── CMakeLists.txt           库 foray_navigation（C++17，零警告）
+├── .clang-format            组织 C/C++ 风格（4 空格、指针靠左、列宽 100）
 ├── package.xml              build_type=cmake，供 colcon 识别
 └── .github/
     └── workflows/
         └── ci.yml           复制自组织 CI 模板
 ```
 
-> 本仓源码目录尚未建立，当前只有设计文档（`docs/nav_architecture.md`）。
-> 随代码落地同步更新本文件。
+> 本仓已有源码（`include/` `src/` `test/`），随代码变更同步更新本文件。
 
 ## 记录约束
 

@@ -14,7 +14,7 @@
 
 | 模块 | 内容 | 测试 |
 |---|---|---|
-| `include/foray/nav/types.hpp` | 几何、阵营、能力档案、目标、状态、错误码、路径、指令 | — |
+| `include/foray/nav/types.hpp` | 几何、阵营、**兵种（`UnitKind`）**、能力档案、目标、状态、错误码、路径、指令 | `types_test` |
 | `include/foray/nav/costmap_view.hpp` | 代价图只读快照 + 代价编码（偏好 / 自由 / 膨胀 / 未知 / 致死） | — |
 | `include/foray/nav/planner.hpp` | 全局规划器接口 + `PlanningOptions`（预算） | — |
 | `include/foray/nav/controller.hpp` | 局部控制器接口（到达判定不在控制器内） | — |
@@ -52,7 +52,7 @@ ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
 
 | 头文件 | 命名空间 | 公共类型 / 函数 | 契约 |
 |---|---|---|---|
-| `foray/nav/types.hpp` | `foray::nav` | `Vec2` `Pose2` `Side` `Capability` `TraversalProfile` `NavGoal` `NavStatus` `NavError` `Path` `DynamicObstacle` `VelocityCommand` | 失败必须带原因；动态障碍只按几何消费，**不做敌我识别** |
+| `foray/nav/types.hpp` | `foray::nav` | `Vec2` `Pose2` `Side` **`UnitKind`** `Capability` `TraversalProfile` `NavGoal` `NavStatus` `NavError` `Path` `DynamicObstacle` `VelocityCommand` | 失败必须带原因；动态障碍只按几何消费，**不做敌我识别**；兵种只换数值、不改接口 |
 | `foray/nav/costmap_view.hpp` | `foray::nav` | `CostmapView` | 只读快照；代价**数值越小越划算**；`data()/stride()` 供热路径直接寻址 |
 | `foray/nav/planner.hpp` | `foray::nav` | `GlobalPlanner` `PlanningOptions` | 纯函数式；代价必须当**边权重**用；必须遵守预算，不许阻塞 |
 | `foray/nav/controller.hpp` | `foray::nav` | `LocalController` | 有状态；输出前必须限幅；**到达判定由状态机负责** |
@@ -63,6 +63,7 @@ ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
 - **激光只参与定位**，不进代价图、不做地形分析；
 - 不用在线 SLAM；地图是离线资产，随赛季版本化；
 - 动态障碍只按几何消费，**不解释语义**；
+- **兵种接口预留**：`Capability::kind` 已有哨兵 / 步兵 / 重装三个取值，但本仓**只消费哨兵**的数值；步兵与重装只是把数值换成它们的，接口不变（2026-11-02，评审意见）；
 - 依赖方向见 `.foray-layer`；本仓不得依赖 `foray_robots`。
 
 ## 上下游
