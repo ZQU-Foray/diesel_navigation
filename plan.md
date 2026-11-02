@@ -56,6 +56,7 @@ Commit: （首次提交）
 
 ## Acceptance Criteria
 
-- [ ] 本仓能独立 `colcon build`（无代码时跳过）
-- [ ] CI 绿灯
-- [ ] 每个新增模块带独立可执行测试
+- [ ] 本仓能独立 `colcon build`（无代码时跳过）——**待验**：本地没有 ROS 2 环境，
+      CI 里的 `build-ros2` 作业在无 `package.xml` 时会跳过，跳过也算"成功"，所以不能拿绿灯当证据
+- [x] CI 绿灯（2026-11-02：PR #1「All checks have passed」，4 个检查）
+- [x] 每个新增模块带独立可执行测试（`grid_map_test` / `costmap_test` / `astar_planner_test` / `pursuit_controller_test` / `types_test`）
