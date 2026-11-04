@@ -160,12 +160,14 @@ void Costmap::inflate(double inscribed_radius, double inflation_radius, double c
     const double inscribed = std::max(0.0, std::min(inscribed_radius, inflation_radius));
     const double decay_span = inflation_radius - inscribed;
 
-    // 倒角距离变换（两遍），单位是米；起点为所有致死格。
+    // 倒角距离变换（两遍），单位是米；起点为所有致死格**和未知格**。
+    // 未知格本身不会被改写，但要参与距离——否则贴地图边界的路径和穿场地中央一样便宜
+    // （审计 CM-5）。
     const double kInf = std::numeric_limits<double>::infinity();
     std::vector<double> dist(costs_.size(), kInf);
     const double w_diag = std::sqrt(2.0) * resolution_;
     for (size_t i = 0; i < costs_.size(); ++i) {
-        if (costs_[i] == kCostLethal) {
+        if (costs_[i] == kCostLethal || costs_[i] == kCostUnknown) {
             dist[i] = 0.0;
         }
     }
@@ -225,9 +227,12 @@ void Costmap::inflate(double inscribed_radius, double inflation_radius, double c
             costs_[i] = kCostLethal;
             continue;
         }
-        double ratio = (d - inscribed) / decay_span; // 0..1
-        ratio = std::pow(ratio, std::max(0.01, cost_scaling) * 0.1);
-        const double scaled = static_cast<double>(kMaxInflatedCost) * (1.0 - ratio);
+        const double ratio = (d - inscribed) / decay_span; // 0..1
+        // 指数衰减：cost = max * e^(-scaling * ratio)。
+        // 文档写的是"越大衰减越快"，原来用 pow(ratio, scaling*0.1) 恰好相反
+        // （审计 CM-2：scaling=8 时离致死格 0.4 m 处 cost 反而 208）。
+        const double scaled =
+            static_cast<double>(kMaxInflatedCost) * std::exp(-std::max(0.01, cost_scaling) * ratio);
         costs_[i] = static_cast<uint8_t>(std::max(1.0, std::min<double>(kMaxInflatedCost, scaled)));
     }
 }

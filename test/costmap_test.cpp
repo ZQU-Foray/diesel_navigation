@@ -176,6 +176,53 @@ void test_inflate_is_idempotent() {
     check(after_first == after_fourth, "idem: repeated inflate does not shrink free space");
 }
 
+// ---- 2026-11-03 审计 CM-2 / CM-5 的回归测试 ----
+
+/// CM-2：`cost_scaling` 越大，离障碍同样距离的代价应当**越低**（衰减越快）。
+void test_cost_scaling_decays_faster_when_larger() {
+    auto cost_at_distance = [](double scaling) {
+        foray::nav::Costmap costmap;
+        std::string error;
+        costmap.init(100, 100, 0.05, foray::nav::Vec2{0.0, 0.0}, &error);
+        for (int iy = 0; iy < 100; ++iy) {
+            for (int ix = 0; ix < 100; ++ix) {
+                costmap.set_cost(ix, iy, foray::nav::kCostFree);
+            }
+        }
+        for (int iy = 0; iy < 100; ++iy) {
+            for (int ix = 0; ix < 100; ++ix) {
+                if (ix < 20) {
+                    costmap.set_cost(ix, iy, foray::nav::kCostLethal);
+                }
+            }
+        }
+        costmap.inflate(0.20, 0.80, scaling);
+        return static_cast<int>(costmap.cost_at(30, 50)); // 离致死区约 0.5 m
+    };
+    const int slow = cost_at_distance(1.0);
+    const int fast = cost_at_distance(8.0);
+    check(fast < slow, "cost_scaling: larger factor decays faster (cheaper)");
+}
+
+/// CM-5：未知格不参与距离变换时，贴边界的路线和穿中央一样便宜。
+void test_unknown_contributes_to_inflation() {
+    foray::nav::Costmap costmap;
+    std::string error;
+    check(costmap.init(60, 60, 0.05, foray::nav::Vec2{0.0, 0.0}, &error), "unknown: init");
+    // 左半边全未知，右半边全自由
+    for (int iy = 0; iy < 60; ++iy) {
+        for (int ix = 0; ix < 60; ++ix) {
+            costmap.set_cost(ix, iy, ix < 30 ? foray::nav::kCostUnknown : foray::nav::kCostFree);
+        }
+    }
+    costmap.inflate(0.05, 0.50, 3.0);
+    // 紧贴未知边界那一格应当被抬价，而不是保持自由价
+    check(costmap.cost_at(31, 30) > foray::nav::kCostFree,
+          "unknown: cells next to unknown are inflated");
+    check(costmap.cost_at(29, 30) == foray::nav::kCostUnknown,
+          "unknown: unknown cells stay unknown");
+}
+
 } // namespace
 
 int main() {
@@ -185,6 +232,8 @@ int main() {
     test_unknown_not_inflated_through();
     test_dynamic_obstacles();
     test_inflate_is_idempotent();
+    test_cost_scaling_decays_faster_when_larger();
+    test_unknown_contributes_to_inflation();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");
