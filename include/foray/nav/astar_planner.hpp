@@ -15,6 +15,8 @@
 #ifndef FORAY__NAV__ASTAR_PLANNER_HPP_
 #define FORAY__NAV__ASTAR_PLANNER_HPP_
 
+#include <vector>
+
 #include "foray/nav/planner.hpp"
 
 namespace foray {
@@ -52,6 +54,13 @@ class AstarPlanner : public GlobalPlanner {
 
   private:
     AstarParams params_{};
+
+    // 复用的工作缓冲：每次 plan 只 resize / 重新填充，不再重新申请。
+    // 原来每次规划要租约 500 KB（g_score + parent + closed），20 Hz 重规划会一直抖分配器
+    // （审计 AS-7）。
+    std::vector<double> g_score_{};
+    std::vector<int> parent_{};
+    std::vector<char> closed_{};
 };
 
 } // namespace nav

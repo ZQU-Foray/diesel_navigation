@@ -265,6 +265,32 @@ void test_narrow_polygon_is_rasterized() {
     check(costmap.lethal_count() > 0, "narrow: sub-cell band still marks cells");
 }
 
+/// CM-8：包围盒裁剪不能把"贴着地图边"的障碍或禁行区裁掉。
+void test_bbox_clipping_keeps_edges() {
+    foray::nav::Costmap costmap;
+    std::string error;
+    check(costmap.init(40, 40, 0.05, foray::nav::Vec2{0.0, 0.0}, &error), "bbox: init");
+    for (int iy = 0; iy < 40; ++iy) {
+        for (int ix = 0; ix < 40; ++ix) {
+            costmap.set_cost(ix, iy, foray::nav::kCostFree);
+        }
+    }
+    // 障碍中心正好在左上角
+    foray::nav::DynamicObstacle obstacle;
+    obstacle.center = foray::nav::Vec2{0.0, 0.0};
+    obstacle.radius = 0.1;
+    costmap.stamp_obstacles({obstacle});
+    check(costmap.cost_at(0, 0) == foray::nav::kCostLethal, "bbox: corner obstacle still marks");
+
+    // 一半在地图外的禁行多边形
+    std::vector<foray::nav::Vec2> poly = {{-0.5, 1.0}, {0.5, 1.0}, {0.5, 1.2}, {-0.5, 1.2}};
+    costmap.fill_polygon(poly, foray::nav::kCostLethal);
+    int ix = -1;
+    int iy = -1;
+    check(costmap.world_to_grid(foray::nav::Vec2{0.2, 1.1}, &ix, &iy), "bbox: point in grid");
+    check(costmap.cost_at(ix, iy) == foray::nav::kCostLethal, "bbox: clipped polygon still marks");
+}
+
 } // namespace
 
 int main() {
@@ -278,6 +304,7 @@ int main() {
     test_unknown_contributes_to_inflation();
     test_stale_obstacles_expire();
     test_narrow_polygon_is_rasterized();
+    test_bbox_clipping_keeps_edges();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");

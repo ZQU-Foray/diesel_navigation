@@ -275,9 +275,35 @@ void test_cost_used_as_weight() {
     check(went_around, "weight: routes around the expensive band instead of crossing it");
 }
 
+/// AS-7：同一个规划器连算两次，结果必须完全一致（复用的缓冲不许串味）。
+void test_repeat_plan_is_stable() {
+    foray::nav::Costmap map = make_free_map();
+    foray::nav::AstarPlanner planner;
+    foray::nav::PlanningOptions options;
+    foray::nav::Path first;
+    foray::nav::Path second;
+    const foray::nav::Pose2 start{0.1, 0.1, 0.0};
+    const foray::nav::Pose2 goal{2.5, 1.5, 0.0};
+    check(planner.plan(map, start, goal, options, &first) == foray::nav::NavError::kNone,
+          "stable: first plan ok");
+    check(planner.plan(map, start, goal, options, &second) == foray::nav::NavError::kNone,
+          "stable: second plan ok");
+    bool same = first.size() == second.size();
+    if (same) {
+        for (size_t i = 0; i < first.size(); ++i) {
+            if (first[i].x != second[i].x || first[i].y != second[i].y) {
+                same = false;
+                break;
+            }
+        }
+    }
+    check(same, "stable: repeated plan gives identical path");
+}
+
 } // namespace
 
 int main() {
+    test_repeat_plan_is_stable();
     test_straight_line();
     test_l_shape();
     test_goal_in_lethal();

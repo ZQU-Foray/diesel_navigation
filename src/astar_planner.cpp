@@ -188,9 +188,19 @@ NavError AstarPlanner::plan(const CostmapView& map, const Pose2& start, const Po
     // 偏好区权重可能小于 1，启发式按最小权重缩放，保证可采纳（不破最优性）。
     const double heuristic_scale = std::min(1.0, std::max(0.05, params_.prefer_weight));
 
-    std::vector<double> g_score(total, std::numeric_limits<double>::infinity());
-    std::vector<int> parent(total, -1);
-    std::vector<char> closed(total, 0);
+    // 复用成员缓冲（审计 AS-7）：尺寸变了才扩容，否则只重新填充。
+    const size_t total_sz = static_cast<size_t>(total);
+    if (g_score_.size() != total_sz) {
+        g_score_.resize(total_sz);
+        parent_.resize(total_sz);
+        closed_.resize(total_sz);
+    }
+    std::fill(g_score_.begin(), g_score_.end(), std::numeric_limits<double>::infinity());
+    std::fill(parent_.begin(), parent_.end(), -1);
+    std::fill(closed_.begin(), closed_.end(), 0);
+    std::vector<double>& g_score = g_score_;
+    std::vector<int>& parent = parent_;
+    std::vector<char>& closed = closed_;
     std::priority_queue<Node, std::vector<Node>, NodeGreater> open;
 
     g_score[static_cast<size_t>(start_index)] = 0.0;

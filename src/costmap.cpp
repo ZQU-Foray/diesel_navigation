@@ -148,8 +148,40 @@ void Costmap::fill_polygon(const std::vector<Vec2>& polygon, uint8_t cost) {
     // 半对角线 ≈ 0.7071 × 格宽：格心到边的距离小于它，格子就算碰到这条边。
     const double max_offset = resolution_ * 0.7071;
     const size_t n = polygon.size();
-    for (int iy = 0; iy < height_; ++iy) {
-        for (int ix = 0; ix < width_; ++ix) {
+
+    // 只扫多边形的包围盒：全图扫描在 600×320 格上是几十万次无用判定（审计 CM-8）。
+    double min_x = polygon[0].x;
+    double max_x = polygon[0].x;
+    double min_y = polygon[0].y;
+    double max_y = polygon[0].y;
+    for (const auto& p : polygon) {
+        min_x = std::min(min_x, p.x);
+        max_x = std::max(max_x, p.x);
+        min_y = std::min(min_y, p.y);
+        max_y = std::max(max_y, p.y);
+    }
+    const double margin = resolution_ * 2.0; // 留出"格心到边"的判定余量
+    int ix0 = 0;
+    int iy0 = 0;
+    int ix1 = width_ - 1;
+    int iy1 = height_ - 1;
+    int cx = 0;
+    int cy = 0;
+    if (world_to_grid(Vec2{min_x - margin, min_y - margin}, &cx, &cy)) {
+        ix0 = std::max(0, cx);
+        iy0 = std::max(0, cy);
+    }
+    if (world_to_grid(Vec2{max_x + margin, max_y + margin}, &cx, &cy)) {
+        ix1 = std::min(width_ - 1, cx);
+        iy1 = std::min(height_ - 1, cy);
+    }
+    if (ix1 < ix0 || iy1 < iy0) {
+        save_base();
+        return;
+    }
+
+    for (int iy = iy0; iy <= iy1; ++iy) {
+        for (int ix = ix0; ix <= ix1; ++ix) {
             Vec2 center{};
             if (!grid_to_world(ix, iy, &center)) {
                 continue;
@@ -299,19 +331,39 @@ void Costmap::stamp_obstacles(const std::vector<DynamicObstacle>& obstacles) {
         return;
     }
 
-    for (int iy = 0; iy < height_; ++iy) {
-        for (int ix = 0; ix < width_; ++ix) {
-            Vec2 center{};
-            if (!grid_to_world(ix, iy, &center)) {
-                continue;
-            }
-            for (const auto& obstacle : fresh) {
+    // 每个障碍只扫自己的包围盒：全图 × 全障碍是 O(W·H·N)，
+    // 600×320 格 × 30 个障碍 ≈ 600 万次距离计算（审计 CM-8）。
+    int cx = 0;
+    int cy = 0;
+    for (const auto& obstacle : fresh) {
+        const double margin = resolution_ * 1.5;
+        int ix0 = 0;
+        int iy0 = 0;
+        int ix1 = width_ - 1;
+        int iy1 = height_ - 1;
+        if (world_to_grid(Vec2{obstacle.center.x - obstacle.radius - margin,
+                               obstacle.center.y - obstacle.radius - margin},
+                          &cx, &cy)) {
+            ix0 = std::max(0, cx);
+            iy0 = std::max(0, cy);
+        }
+        if (world_to_grid(Vec2{obstacle.center.x + obstacle.radius + margin,
+                               obstacle.center.y + obstacle.radius + margin},
+                          &cx, &cy)) {
+            ix1 = std::min(width_ - 1, cx);
+            iy1 = std::min(height_ - 1, cy);
+        }
+        for (int iy = iy0; iy <= iy1; ++iy) {
+            for (int ix = ix0; ix <= ix1; ++ix) {
+                Vec2 center{};
+                if (!grid_to_world(ix, iy, &center)) {
+                    continue;
+                }
                 const double dx = center.x - obstacle.center.x;
                 const double dy = center.y - obstacle.center.y;
                 if (std::sqrt(dx * dx + dy * dy) <= obstacle.radius) {
                     costs_[static_cast<size_t>(iy) * static_cast<size_t>(width_) +
                            static_cast<size_t>(ix)] = kCostLethal;
-                    break;
                 }
             }
         }
