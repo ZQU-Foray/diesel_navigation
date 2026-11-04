@@ -51,9 +51,21 @@ struct PursuitParams {
     /// 停止容差（米）：距终点小于它时输出零速度。
     /// @note **不是到达判定**——到达由状态机按 `NavGoal::xy_tolerance` 判。
     double stop_tolerance{0.15};
+
+    /// 到点后要不要把车头对到路径末端的朝向。
+    /// 全向底盘默认 false（平移就够用）；要「到位后朝向也对」的场景再打开。
+    /// @note 2026-11-03 审计 PC-4：文档提过 `omega` 与 `require_heading`，代码里却是零。
+    ///       现在补上：打开后到点阶段输出 omega 而不是硬停。
+    bool align_heading_at_goal{false};
+    /// 到点对朝向时的角度增益（1/s）与角速度上限（rad/s）。
+    double heading_gain{2.0};
+    double max_omega{2.0};
+    /// 朝向误差小于该值（弧度）算对齐。
+    double heading_tolerance{0.05};
 };
 
-/// 纯追踪控制器：全向底盘，不做航向对齐，直接朝前视点平移。
+/// 纯追踪控制器：全向底盘，**默认**不做航向对齐，直接朝前视点平移。
+/// 需要「到位后朝向也对齐」时把 `PursuitParams::align_heading_at_goal` 打开。
 ///
 /// 契约（见 controller.hpp）：
 /// - 有状态：记住上一次指令做变化率限幅，`reset()` 归零；

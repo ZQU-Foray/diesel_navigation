@@ -33,6 +33,18 @@ double distance(const Vec2& a, const Vec2& b) {
     return std::sqrt(dx * dx + dy * dy);
 }
 
+/// 把角度折回 (-pi, pi]。
+double normalize_angle(double a) {
+    constexpr double kPi = 3.14159265358979323846;
+    while (a > kPi) {
+        a -= 2.0 * kPi;
+    }
+    while (a <= -kPi) {
+        a += 2.0 * kPi;
+    }
+    return a;
+}
+
 /// 把 `p` 投到线段 [a,b] 上的参数 t（夹在 0..1）。
 double project_param(const Vec2& a, const Vec2& b, const Vec2& p) {
     const double dx = b.x - a.x;
@@ -127,6 +139,27 @@ NavError PursuitController::compute(const Pose2& pose, const Path& path, double 
     // 到点：目标速度为零，但仍要过变化率限幅——不许一帧从巡航速度直接跌到 0。
     // （2026-11-03 审计 PC-3：实测 2.500 m/s 单帧阶跃，契约上限 max_accel*dt = 0.300。）
     if (goal_distance <= params_.stop_tolerance) {
+        // 到位后要对朝向：只转不走（审计 PC-4——`omega` 原来恒为 0）。
+        if (params_.align_heading_at_goal) {
+            const double heading_error = normalize_angle(path.back().yaw - pose.yaw);
+            if (std::fabs(heading_error) > params_.heading_tolerance) {
+                const double max_delta = params_.max_accel * dt;
+                const double linear = std::hypot(last_command_.vx, last_command_.vy);
+                VelocityCommand turn{};
+                if (linear > max_delta && linear > 1e-12) {
+                    const double k = max_delta / linear;
+                    turn.vx = last_command_.vx * (1.0 - k);
+                    turn.vy = last_command_.vy * (1.0 - k);
+                }
+                turn.omega = clamp(heading_error * params_.heading_gain, -params_.max_omega,
+                                   params_.max_omega);
+                last_command_ = turn;
+                last_scale_ = 0.0;
+                has_last_ = true;
+                *out = turn;
+                return NavError::kNone;
+            }
+        }
         const double max_delta = params_.max_accel * dt;
         const double delta = std::hypot(last_command_.vx, last_command_.vy);
         VelocityCommand stop{};

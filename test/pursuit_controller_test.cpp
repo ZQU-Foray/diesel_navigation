@@ -207,6 +207,21 @@ void test_goal_stop_respects_rate_limit() {
     check(drop <= params.max_accel * dt + 1e-9, "stop: rate limited");
 }
 
+/// PC-4：打开 align_heading_at_goal 后，到点阶段要输出 omega（原来恒为 0）。
+void test_heading_alignment_at_goal() {
+    foray::nav::PursuitParams params;
+    params.align_heading_at_goal = true;
+    foray::nav::PursuitController controller(params);
+    foray::nav::Path path;
+    path.push_back(foray::nav::Pose2{0.0, 0.0, 0.0});
+    path.push_back(foray::nav::Pose2{1.0, 0.0, 1.0}); // 末端要求朝向 1 rad
+    const foray::nav::Pose2 pose{1.0, 0.0, 0.0};      // 位置到了，朝向差 1 rad
+    foray::nav::VelocityCommand command;
+    check(controller.compute(pose, path, 0.05, &command) == foray::nav::NavError::kNone,
+          "align: ok");
+    check(std::fabs(command.omega) > 1e-6, "align: omega is produced when heading off");
+}
+
 } // namespace
 
 int main() {
@@ -218,6 +233,7 @@ int main() {
     test_reaches_goal_on_long_straight();
     test_straight_line_has_no_curvature();
     test_goal_stop_respects_rate_limit();
+    test_heading_alignment_at_goal();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");
