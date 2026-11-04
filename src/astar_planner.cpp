@@ -220,10 +220,6 @@ NavError AstarPlanner::plan(const CostmapView& map, const Pose2& start, const Po
             const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                      std::chrono::steady_clock::now() - started)
                                      .count();
-            const auto budget =
-                std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::microseconds(1))
-                    .count();
-            (void)budget;
             if (elapsed > options.deadline_ns) {
                 break; // 超时：同上
             }

@@ -142,6 +142,7 @@ void Costmap::fill_polygon(const std::vector<Vec2>& polygon, uint8_t cost) {
     // 格子化会把"比一格还窄"的带整条漏掉：只判格心在不在于多边形内，2 cm 的禁行线会
     // 一条都不中（审计「fill_polygon 细窄带」）。所以再补一条：格心到任一边的距离
     // 不超过半对角线，也算命中。
+    // 半对角线 ≈ 0.7071 × 格宽：格心到边的距离小于它，格子就算碰到这条边。
     const double max_offset = resolution_ * 0.7071;
     const size_t n = polygon.size();
     for (int iy = 0; iy < height_; ++iy) {
