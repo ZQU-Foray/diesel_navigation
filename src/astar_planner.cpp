@@ -58,7 +58,7 @@ double step_weight(uint8_t cost, double cost_weight, double prefer_weight) {
         return std::numeric_limits<double>::infinity();
     }
     if (cost == kCostPreferred) {
-        return std::max(0.05, std::min(1.0, prefer_weight));
+        return std::max(0.05, prefer_weight); // >1 表示"比自由格更贵"，不再被钳成 1（审计 AS-4）
     }
     if (cost == kCostFree) {
         return 1.0;
@@ -336,9 +336,18 @@ NavError AstarPlanner::plan(const CostmapView& map, const Pose2& start, const Po
 
     out->reserve(reduced.size() + 2);
     out->push_back(Pose2{start.x, start.y, start.yaw});
+    // 第一个点通常是"起点格的格心"，与真实起点最多差半格；直接接上会形成一个几厘米的折角，
+    // 按弧长参数化的控制器会在首段看到零长/反向微段（审计 AS-6）。太近就跳过它。
+    size_t first = 0;
+    if (!reduced.empty()) {
+        const double gap = std::hypot(reduced[0].x - start.x, reduced[0].y - start.y);
+        if (gap < resolution) {
+            first = 1;
+        }
+    }
     // 中间点的朝向按"前后两点连线"给：一律置 0 会让 Path 的位姿语义失效
     // （审计 AS-2：起点有朝向、中间全 0、终点又有朝向，读的人会以为朝向没意义）。
-    for (size_t i = 0; i < reduced.size(); ++i) {
+    for (size_t i = first; i < reduced.size(); ++i) {
         double yaw = 0.0;
         const Vec2 before = (i == 0) ? Vec2{start.x, start.y} : reduced[i - 1];
         const Vec2 after = (i + 1 < reduced.size()) ? reduced[i + 1] : Vec2{goal.x, goal.y};

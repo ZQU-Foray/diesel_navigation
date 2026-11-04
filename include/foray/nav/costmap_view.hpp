@@ -27,7 +27,9 @@ namespace nav {
 /// - `kCostPreferred = 0`：偏好区（例如隧道），比自由更便宜；
 /// - `kCostFree = 1`：普通可行区域；
 /// - `2..252`：膨胀层衰减带，越大越"贵"；
-/// - `kCostUnknown` / `kCostLethal`：不可通行，两者分开编码只为日志与测试好区分。
+/// - `kCostUnknown = 253` / `kCostLethal = 255`：不可通行，两者分开编码只为日志与测试好区分；
+/// - `kCostReserved = 254`：**保留、不许写入**。它夹在未知与致死之间，任何误写都会被
+///   当成"可通行"（审计 CM-9）；`passable()` 把它按不可通行处理，留个保险。
 ///
 /// @warning 规划器必须把代价当作**边权重**使用，不得二值化成"能走/不能走"，
 ///          否则代价场失效（详见 `planner.hpp` 契约）。
@@ -36,6 +38,8 @@ enum CostValue : uint8_t {
     kCostFree = 1,
     /// 未知空间（地图未标、或地图外）：保守视为不可通行。
     kCostUnknown = 253,
+    /// 保留值：不许写入；`passable()` 按不可通行处理（审计 CM-9）。
+    kCostReserved = 254,
     /// 致死：禁行区、高地、动态障碍占位。
     kCostLethal = 255,
 };
@@ -90,10 +94,10 @@ class CostmapView {
         return width();
     }
 
-    /// 该格是否可通行（非致死、非未知）。
+    /// 该格是否可通行（非致死、非未知、非保留值）。
     bool passable(int ix, int iy) const {
         const uint8_t c = cost_at(ix, iy);
-        return c != kCostLethal && c != kCostUnknown;
+        return c != kCostLethal && c != kCostUnknown && c != kCostReserved;
     }
 };
 

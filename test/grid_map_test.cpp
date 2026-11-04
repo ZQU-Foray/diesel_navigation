@@ -197,6 +197,49 @@ void test_truncated_huge_pgm_is_rejected() {
     check(!map.load_from_pgm_bytes(bytes, meta, &error), "truncated huge pgm rejected");
 }
 
+// ---- 2026-11-03 审计 GM-3 / GM-4 / GM-5 的回归测试 ----
+
+/// GM-3：PGM 头部以 CRLF 结尾时，像素数据不能整体错位一字节。
+void test_pgm_crlf_header() {
+    const std::string header = "P5\r\n2 1\r\n255\r\n";
+    std::vector<uint8_t> bytes(header.begin(), header.end());
+    bytes.push_back(0);   // 黑 = 障碍
+    bytes.push_back(255); // 白 = 自由
+    foray::nav::GridMap map;
+    std::string error;
+    MapMeta meta = make_meta();
+    check(map.load_from_pgm_bytes(bytes, meta, &error), "crlf: loads");
+    check(map.cost_at(0, 0) == foray::nav::kCostLethal, "crlf: first pixel is black");
+    check(map.cost_at(1, 0) == foray::nav::kCostFree, "crlf: second pixel is white");
+}
+
+/// GM-4：行内注释不该粘进 image 路径；negate 的大小写都要认。
+void test_yaml_inline_comment_and_true_case() {
+    const std::string yaml = "image: map.pgm  # 地图文件\n"
+                             "resolution: 0.05\n"
+                             "origin: [0.0, 0.0, 0.0]\n"
+                             "negate: True\n"
+                             "occupied_thresh: 0.65\n"
+                             "free_thresh: 0.196\n";
+    foray::nav::MapMeta meta;
+    std::string error;
+    check(foray::nav::parse_map_meta(yaml, &meta, &error), "yaml: inline comment parses");
+    check(meta.image_path == "map.pgm", "yaml: inline comment stripped from image path");
+    check(meta.negate == 1, "yaml: negate accepts True");
+}
+
+/// GM-5：阈值反了要报错，不能静默把整张图判成障碍。
+void test_yaml_rejects_inverted_thresholds() {
+    const std::string yaml = "image: map.pgm\n"
+                             "resolution: 0.05\n"
+                             "origin: [0.0, 0.0, 0.0]\n"
+                             "occupied_thresh: 0.1\n"
+                             "free_thresh: 0.9\n";
+    foray::nav::MapMeta meta;
+    std::string error;
+    check(!foray::nav::parse_map_meta(yaml, &meta, &error), "yaml: inverted thresholds rejected");
+}
+
 } // namespace
 
 int main() {
@@ -207,6 +250,9 @@ int main() {
     test_world_grid_roundtrip();
     test_pgm_maxval_is_normalized();
     test_truncated_huge_pgm_is_rejected();
+    test_pgm_crlf_header();
+    test_yaml_inline_comment_and_true_case();
+    test_yaml_rejects_inverted_thresholds();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");

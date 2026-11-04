@@ -162,6 +162,11 @@ bool parse_pgm(const std::vector<uint8_t>& bytes, int* width, int* height,
             }
             return false;
         }
+        // 头部以 CRLF 结尾时，maxval 后面是两个空白字节：只跳一个会整图错位一像素（审计 GM-3）。
+        while (pos < bytes.size() && (bytes[pos] == ' ' || bytes[pos] == '\t' ||
+                                      bytes[pos] == '\r' || bytes[pos] == '\n')) {
+            ++pos;
+        }
     }
 
     pixels->assign(count, 0);
@@ -179,7 +184,6 @@ bool parse_pgm(const std::vector<uint8_t>& bytes, int* width, int* height,
             }
         }
     } else {
-        ++pos; // 跳过 maxval 后的单个空白
         std::copy(bytes.begin() + static_cast<long>(pos),
                   bytes.begin() + static_cast<long>(pos + count), pixels->begin());
     }
@@ -221,6 +225,11 @@ bool parse_map_meta(const std::string& yaml_text, MapMeta* meta, std::string* er
         }
         const std::string key = trim(text.substr(0, colon));
         std::string value = trim(text.substr(colon + 1));
+        // 行内注释：`image: map.pgm  # 说明`——不剥掉的话路径会带一截注释尾巴（审计 GM-4）。
+        const auto hash = value.find('#');
+        if (hash != std::string::npos) {
+            value = trim(value.substr(0, hash));
+        }
         if (!value.empty() && value.front() == '"' && value.back() == '"' && value.size() >= 2) {
             value = value.substr(1, value.size() - 2);
         }
@@ -235,7 +244,10 @@ bool parse_map_meta(const std::string& yaml_text, MapMeta* meta, std::string* er
             }
             has_resolution = true;
         } else if (key == "negate") {
-            parsed.negate = (value == "1" || value == "true") ? 1 : 0;
+            // 大小写都要认：`True` 静默变 0 会悄悄翻转整张图（审计 GM-4）。
+            const bool truthy = (value == "1" || value == "true" || value == "True" ||
+                                 value == "TRUE" || value == "yes");
+            parsed.negate = truthy ? 1 : 0;
         } else if (key == "occupied_thresh") {
             if (!parse_double(value, &parsed.occupied_thresh)) {
                 if (error) {
@@ -289,6 +301,14 @@ bool parse_map_meta(const std::string& yaml_text, MapMeta* meta, std::string* er
     if (std::fabs(parsed.origin_yaw) > 1e-9) {
         if (error) {
             *error = "rotated map origin is not supported";
+        }
+        return false;
+    }
+    // 阈值反了的话，`build_from_pixels` 会先判 occupied → 整张图变成障碍且不报错
+    // （审计 GM-5）。这里提前拦下来，比事后查"为什么哪儿都走不了"省事。
+    if (parsed.occupied_thresh <= parsed.free_thresh) {
+        if (error) {
+            *error = "occupied_thresh must be greater than free_thresh";
         }
         return false;
     }
@@ -374,6 +394,8 @@ bool GridMap::build_from_pixels(const std::vector<uint8_t>& pixels, int width, i
     }
 
     loaded_ = true;
+    // 注意：这是"载入时刻"，不是"地图版本"。契约里 stamp_ns 的用法是"与位姿/障碍时间戳
+    // 比较判过期"（审计 GM-6），两者语义不同，消费者接入时别混用。
     stamp_ns_ = now_ns();
     return true;
 }

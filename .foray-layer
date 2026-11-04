@@ -7,4 +7,4 @@
 #   - foray_interfaces 不得依赖任何自研仓
 
 layer: L4
-depends_on_layers: [X2, L1, L2, L3, L4]
+depends_on_layers: [X2, L1, L2, L3]  # 不含自身 L4：自依赖语义未定义（审计 TS-5）

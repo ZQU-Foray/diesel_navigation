@@ -5,8 +5,12 @@
   <version>0.1.0</version>
   <description>Foray L4 导航：静态地图规划 + 动态障碍规避 + 全向控制器（不依赖 ROS 的核心算法）</description>
   <maintainer email="Heart-0251@outlook.com">Foray Navigation</maintainer>
-  <license>TODO</license>
+  <license>Apache-2.0</license>
 
+  <!-- 核心库目前零外部依赖；接上游（foray_interfaces / foray_platform / foray_localization）
+       时在这里补 <depend>，否则 rosdep 拿不到依赖声明（审计 TS-6）。 -->
+  <!-- 核心库目前零外部依赖；接上游（foray_interfaces / foray_platform / foray_localization）
+       时在这里补 <depend>，否则 rosdep 拿不到依赖声明（审计 TS-6）。 -->
   <buildtool_depend>cmake</buildtool_depend>
 
   <export>

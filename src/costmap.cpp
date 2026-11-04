@@ -99,7 +99,6 @@ bool Costmap::init(int width, int height, double resolution, const Vec2& origin,
 }
 
 bool Costmap::set_static_layer(const CostmapView& static_map, std::string* error) {
-    stamp_ns_ = now_ns();
     restore_base();
     if (width_ <= 0 || height_ <= 0) {
         if (error) {
@@ -119,6 +118,9 @@ bool Costmap::set_static_layer(const CostmapView& static_map, std::string* error
         }
         return false;
     }
+    // 换一张静态图时先把旧内容清成未知，否则上一张图的致死格会留在原地
+    // （审计 CM-6：旧 lethal 残留，换图后路被"幽灵障碍"堵住）。
+    costs_.assign(costs_.size(), kCostUnknown);
     for (int iy = 0; iy < height_; ++iy) {
         for (int ix = 0; ix < width_; ++ix) {
             const uint8_t cost = static_map.cost_at(ix, iy);
@@ -130,6 +132,7 @@ bool Costmap::set_static_layer(const CostmapView& static_map, std::string* error
         }
     }
     save_base();
+    stamp_ns_ = now_ns(); // 校验全部通过、数据也写完了，才推进版本号
     return true;
 }
 
