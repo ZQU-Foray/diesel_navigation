@@ -287,10 +287,21 @@ NavError AstarPlanner::plan(const CostmapView& map, const Pose2& start, const Po
     // 视线捷径化：能直连、且**代价不变差**才跳过中间点。
     // 只看通不通是不够的——那会把"绕隧道"抄成直穿，偏好就白设了。
     std::vector<Vec2> reduced;
+    bool smoothing_aborted = false;
     if (params_.smooth && cells.size() > 2) {
         reduced.push_back(cells.front());
         size_t anchor = 0;
         while (anchor + 1 < cells.size()) {
+            // 平滑也必须守预算：超时就放弃平滑、原样返回（审计 AS-1）。
+            if (options.deadline_ns > 0) {
+                const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                         std::chrono::steady_clock::now() - started)
+                                         .count();
+                if (elapsed > options.deadline_ns) {
+                    smoothing_aborted = true;
+                    break;
+                }
+            }
             size_t best = anchor + 1;
             double best_chain = segment_cost(map, cells[anchor], cells[anchor + 1],
                                              params_.cost_weight, params_.prefer_weight);
@@ -309,8 +320,11 @@ NavError AstarPlanner::plan(const CostmapView& map, const Pose2& start, const Po
             reduced.push_back(cells[best]);
             anchor = best;
         }
-        if (reduced.size() >= 2 &&
-            (reduced.back().x != cells.back().x || reduced.back().y != cells.back().y)) {
+        if (smoothing_aborted) {
+            // 超预算：原样交回未平滑的格子序列，宁可路径糙，也不许超时。
+            reduced = cells;
+        } else if (reduced.size() >= 2 &&
+                   (reduced.back().x != cells.back().x || reduced.back().y != cells.back().y)) {
             reduced.push_back(cells.back());
         }
     } else {
