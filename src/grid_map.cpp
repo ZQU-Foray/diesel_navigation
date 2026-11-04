@@ -137,6 +137,33 @@ bool parse_pgm(const std::vector<uint8_t>& bytes, int* width, int* height,
     }
 
     const size_t count = static_cast<size_t>(w) * static_cast<size_t>(h);
+
+    // 先校验"数据够不够"，再分配：否则一张声称 30000x30000、实际只有几十字节的图
+    // 会先 bad_alloc 崩掉进程（审计 GM-2）。
+    if (magic == "P2") {
+        // P2 每个像素至少一个字符（含分隔符），不够就是坏的。
+        if (bytes.size() - pos < count) {
+            if (error) {
+                *error = "pgm pixel data truncated";
+            }
+            return false;
+        }
+    } else {
+        // P5：maxval 之后恰好一个空白字符，然后是 count 个原始字节。
+        if (pos >= bytes.size()) {
+            if (error) {
+                *error = "pgm pixel data missing";
+            }
+            return false;
+        }
+        if (bytes.size() - pos - 1 < count) {
+            if (error) {
+                *error = "pgm pixel data truncated";
+            }
+            return false;
+        }
+    }
+
     pixels->assign(count, 0);
 
     if (magic == "P2") {
@@ -152,22 +179,17 @@ bool parse_pgm(const std::vector<uint8_t>& bytes, int* width, int* height,
             }
         }
     } else {
-        // P5：maxval 之后恰好一个空白字符，然后是原始字节。
-        if (pos >= bytes.size()) {
-            if (error) {
-                *error = "pgm pixel data missing";
-            }
-            return false;
-        }
         ++pos; // 跳过 maxval 后的单个空白
-        if (bytes.size() - pos < count) {
-            if (error) {
-                *error = "pgm pixel data truncated";
-            }
-            return false;
-        }
         std::copy(bytes.begin() + static_cast<long>(pos),
                   bytes.begin() + static_cast<long>(pos + count), pixels->begin());
+    }
+
+    // maxval 不一定等于 255：不归一化的话，maxval=1 的全白图会被整张判成障碍（审计 GM-1）。
+    if (maxval != 255) {
+        for (size_t i = 0; i < count; ++i) {
+            const int scaled = static_cast<int>((*pixels)[i]) * 255 / maxval;
+            (*pixels)[i] = static_cast<uint8_t>(std::min(255, std::max(0, scaled)));
+        }
     }
 
     *width = w;

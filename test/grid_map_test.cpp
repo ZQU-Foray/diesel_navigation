@@ -163,6 +163,40 @@ void test_world_grid_roundtrip() {
     check(ix == 3, "last column index");
 }
 
+// ---- 2026-11-03 审计 GM-1 / GM-2 的回归测试 ----
+
+/// GM-1：maxval 不是 255 时要归一化，否则全白图会被判成整张障碍。
+void test_pgm_maxval_is_normalized() {
+    for (const int maxval : {1, 15, 255}) {
+        const std::string header = "P5\n2 1\n" + std::to_string(maxval) + "\n";
+        std::vector<uint8_t> bytes(header.begin(), header.end());
+        // 两个像素都是"最大亮度" = 全是自由
+        bytes.push_back(static_cast<uint8_t>(maxval));
+        bytes.push_back(static_cast<uint8_t>(maxval));
+        foray::nav::GridMap map;
+        std::string error;
+        MapMeta meta = make_meta();
+        char what[96];
+        std::snprintf(what, sizeof(what), "maxval=%d loads", maxval);
+        check(map.load_from_pgm_bytes(bytes, meta, &error), what);
+        std::snprintf(what, sizeof(what), "maxval=%d white is free", maxval);
+        check(map.cost_at(0, 0) == foray::nav::kCostFree &&
+                  map.cost_at(1, 0) == foray::nav::kCostFree,
+              what);
+    }
+}
+
+/// GM-2：声称很大、实际数据不足的图要"返回 false"，而不是先 bad_alloc。
+void test_truncated_huge_pgm_is_rejected() {
+    const std::string header = "P5\n30000 30000\n255\n";
+    std::vector<uint8_t> bytes(header.begin(), header.end());
+    bytes.push_back(255); // 只给一个像素
+    foray::nav::GridMap map;
+    std::string error;
+    MapMeta meta = make_meta();
+    check(!map.load_from_pgm_bytes(bytes, meta, &error), "truncated huge pgm rejected");
+}
+
 } // namespace
 
 int main() {
@@ -171,6 +205,8 @@ int main() {
     test_p2_ascii();
     test_unknown_and_bounds();
     test_world_grid_roundtrip();
+    test_pgm_maxval_is_normalized();
+    test_truncated_huge_pgm_is_rejected();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");
