@@ -56,6 +56,21 @@ bool point_in_polygon(const std::vector<Vec2>& polygon, const Vec2& p) {
     return inside;
 }
 
+/// 点到线段的最短距离（米）。
+double point_segment_distance(const Vec2& p, const Vec2& a, const Vec2& b) {
+    const double dx = b.x - a.x;
+    const double dy = b.y - a.y;
+    const double len2 = dx * dx + dy * dy;
+    double t = 0.0;
+    if (len2 > 1e-18) {
+        t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+        t = std::max(0.0, std::min(1.0, t));
+    }
+    const double qx = a.x + dx * t;
+    const double qy = a.y + dy * t;
+    return std::hypot(p.x - qx, p.y - qy);
+}
+
 } // namespace
 
 bool Costmap::init(int width, int height, double resolution, const Vec2& origin,
@@ -124,13 +139,29 @@ void Costmap::fill_polygon(const std::vector<Vec2>& polygon, uint8_t cost) {
         return;
     }
     restore_base();
+    // 格子化会把"比一格还窄"的带整条漏掉：只判格心在不在于多边形内，2 cm 的禁行线会
+    // 一条都不中（审计「fill_polygon 细窄带」）。所以再补一条：格心到任一边的距离
+    // 不超过半对角线，也算命中。
+    const double max_offset = resolution_ * 0.7071;
+    const size_t n = polygon.size();
     for (int iy = 0; iy < height_; ++iy) {
         for (int ix = 0; ix < width_; ++ix) {
             Vec2 center{};
             if (!grid_to_world(ix, iy, &center)) {
                 continue;
             }
-            if (point_in_polygon(polygon, center)) {
+            bool hit = point_in_polygon(polygon, center);
+            if (!hit) {
+                for (size_t k = 0; k < n; ++k) {
+                    const Vec2& a = polygon[k];
+                    const Vec2& b = polygon[(k + 1) % n];
+                    if (point_segment_distance(center, a, b) <= max_offset) {
+                        hit = true;
+                        break;
+                    }
+                }
+            }
+            if (hit) {
                 costs_[static_cast<size_t>(iy) * static_cast<size_t>(width_) +
                        static_cast<size_t>(ix)] = cost;
             }
@@ -237,19 +268,40 @@ void Costmap::inflate(double inscribed_radius, double inflation_radius, double c
     }
 }
 
+void Costmap::set_obstacle_timeout_ns(int64_t timeout_ns) {
+    obstacle_timeout_ns_ = timeout_ns;
+}
+
 void Costmap::stamp_obstacles(const std::vector<DynamicObstacle>& obstacles) {
     stamp_ns_ = now_ns();
     if (obstacles.empty()) {
         return;
     }
     restore_base();
+
+    // 过期障碍按"不存在"处理：人走了、影子还留在图上比没有更坏（审计 CM-3）。
+    const int64_t now = stamp_ns_;
+    std::vector<DynamicObstacle> fresh;
+    fresh.reserve(obstacles.size());
+    for (const auto& obstacle : obstacles) {
+        if (obstacle_timeout_ns_ > 0 && obstacle.stamp_ns > 0 &&
+            now - obstacle.stamp_ns > obstacle_timeout_ns_) {
+            continue;
+        }
+        fresh.push_back(obstacle);
+    }
+    if (fresh.empty()) {
+        save_base();
+        return;
+    }
+
     for (int iy = 0; iy < height_; ++iy) {
         for (int ix = 0; ix < width_; ++ix) {
             Vec2 center{};
             if (!grid_to_world(ix, iy, &center)) {
                 continue;
             }
-            for (const auto& obstacle : obstacles) {
+            for (const auto& obstacle : fresh) {
                 const double dx = center.x - obstacle.center.x;
                 const double dy = center.y - obstacle.center.y;
                 if (std::sqrt(dx * dx + dy * dy) <= obstacle.radius) {

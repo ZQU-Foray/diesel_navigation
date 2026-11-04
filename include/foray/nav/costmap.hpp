@@ -59,6 +59,11 @@ class Costmap : public CostmapView {
     /// 动态层：按圆心与半径把格子刷成致死（不做敌我判断，见设计 §2.1）。
     void stamp_obstacles(const std::vector<DynamicObstacle>& obstacles);
 
+    /// 动态障碍的最长存活时间（纳秒）：`stamp_ns` 早于"现在 - 这个值"的障碍按不存在处理。
+    /// 0 表示不过期（不推荐：人走了、影子还在）。默认 500 ms。
+    /// @note 2026-11-03 审计 CM-3：原来 `stamp_ns` 从头到尾没被读过，障碍永不过期。
+    void set_obstacle_timeout_ns(int64_t timeout_ns);
+
     // ---- CostmapView ----
     double resolution() const override {
         return resolution_;
@@ -109,6 +114,8 @@ class Costmap : public CostmapView {
     bool has_base_{false};
     /// 最近一次写入层的时间（纳秒），作为代价图版本。
     int64_t stamp_ns_{0};
+    /// 动态障碍的最长存活时间（纳秒），0 表示不过期。
+    int64_t obstacle_timeout_ns_{500000000};
 };
 
 } // namespace nav

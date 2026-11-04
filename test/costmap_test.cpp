@@ -223,6 +223,48 @@ void test_unknown_contributes_to_inflation() {
           "unknown: unknown cells stay unknown");
 }
 
+// ---- 2026-11-03 审计 CM-3 与「细窄禁行带」的回归测试 ----
+
+/// CM-3：带过期时间戳的障碍要按"不存在"处理，不许永远留在图上。
+void test_stale_obstacles_expire() {
+    foray::nav::Costmap costmap;
+    std::string error;
+    check(costmap.init(40, 40, 0.05, foray::nav::Vec2{0.0, 0.0}, &error), "stale: init");
+    for (int iy = 0; iy < 40; ++iy) {
+        for (int ix = 0; ix < 40; ++ix) {
+            costmap.set_cost(ix, iy, foray::nav::kCostFree);
+        }
+    }
+    costmap.set_obstacle_timeout_ns(100000000); // 100 ms
+
+    foray::nav::DynamicObstacle old_obstacle;
+    old_obstacle.center = foray::nav::Vec2{1.0, 1.0};
+    old_obstacle.radius = 0.15;
+    old_obstacle.stamp_ns = 1; // 早得离谱，必然过期
+    costmap.stamp_obstacles({old_obstacle});
+
+    int ix = -1;
+    int iy = -1;
+    check(costmap.world_to_grid(foray::nav::Vec2{1.0, 1.0}, &ix, &iy), "stale: center in grid");
+    check(costmap.cost_at(ix, iy) != foray::nav::kCostLethal, "stale: expired obstacle is ignored");
+}
+
+/// 比一格还窄的禁行带也要画出来，不能整条漏掉。
+void test_narrow_polygon_is_rasterized() {
+    foray::nav::Costmap costmap;
+    std::string error;
+    check(costmap.init(80, 80, 0.05, foray::nav::Vec2{0.0, 0.0}, &error), "narrow: init");
+    for (int iy = 0; iy < 80; ++iy) {
+        for (int ix = 0; ix < 80; ++ix) {
+            costmap.set_cost(ix, iy, foray::nav::kCostFree);
+        }
+    }
+    // 2 cm 宽（0.02 m < 0.05 m 一格）的横贯带
+    std::vector<foray::nav::Vec2> band = {{0.0, 1.00}, {4.0, 1.00}, {4.0, 1.02}, {0.0, 1.02}};
+    costmap.fill_polygon(band, foray::nav::kCostLethal);
+    check(costmap.lethal_count() > 0, "narrow: sub-cell band still marks cells");
+}
+
 } // namespace
 
 int main() {
@@ -234,6 +276,8 @@ int main() {
     test_inflate_is_idempotent();
     test_cost_scaling_decays_faster_when_larger();
     test_unknown_contributes_to_inflation();
+    test_stale_obstacles_expire();
+    test_narrow_polygon_is_rasterized();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");
