@@ -147,6 +147,35 @@ void test_dynamic_obstacles() {
     check(costmap.cost_at(ix, iy) == foray::nav::kCostFree, "far from obstacle stays free");
 }
 
+// ---- 2026-11-03 审计 CM-1 的回归测试 ----
+/// `inflate()` 必须幂等：连调多次，可通行区不许越缩越窄。
+void test_inflate_is_idempotent() {
+    foray::nav::Costmap costmap;
+    std::string error;
+    check(costmap.init(100, 100, 0.05, foray::nav::Vec2{0.0, 0.0}, &error), "idem: init");
+    for (int iy = 0; iy < 100; ++iy) {
+        for (int ix = 0; ix < 100; ++ix) {
+            costmap.set_cost(ix, iy, foray::nav::kCostFree);
+        }
+    }
+    // 中间放一小块障碍
+    for (int iy = 48; iy < 52; ++iy) {
+        for (int ix = 48; ix < 52; ++ix) {
+            costmap.set_cost(ix, iy, foray::nav::kCostLethal);
+        }
+    }
+    const int before = costmap.lethal_count();
+    costmap.inflate(0.20, 0.50, 3.0);
+    const int after_first = costmap.lethal_count();
+    for (int k = 0; k < 3; ++k) {
+        costmap.inflate(0.20, 0.50, 3.0);
+    }
+    const int after_fourth = costmap.lethal_count();
+
+    check(after_first > before, "idem: inflation actually happens");
+    check(after_first == after_fourth, "idem: repeated inflate does not shrink free space");
+}
+
 } // namespace
 
 int main() {
@@ -155,6 +184,7 @@ int main() {
     test_inflation();
     test_unknown_not_inflated_through();
     test_dynamic_obstacles();
+    test_inflate_is_idempotent();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");

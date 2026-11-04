@@ -92,11 +92,21 @@ class Costmap : public CostmapView {
     int lethal_count() const;
 
   private:
+    /// 回到"膨胀前"的数据：有快照就还原，没有就用当前数据建快照。
+    /// 所有层写入与 `inflate()` 都先走这一步，膨胀才不会被叠两次。
+    void restore_base();
+    /// 把当前数据记为新的"膨胀前"快照。
+    void save_base();
     double resolution_{0.05};
     Vec2 origin_{};
     int width_{0};
     int height_{0};
     std::vector<uint8_t> costs_{};
+    /// 膨胀前的层数据快照：`inflate()` 每次都从这里重算，保证幂等
+    /// （2026-11-03 审计 CM-1：原地膨胀会让可通行区越调越窄）。
+    std::vector<uint8_t> base_costs_{};
+    /// 快照是否有效。
+    bool has_base_{false};
     /// 最近一次写入层的时间（纳秒），作为代价图版本。
     int64_t stamp_ns_{0};
 };

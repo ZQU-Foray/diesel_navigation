@@ -77,12 +77,15 @@ bool Costmap::init(int width, int height, double resolution, const Vec2& origin,
     resolution_ = resolution;
     origin_ = origin;
     costs_.assign(static_cast<size_t>(width) * static_cast<size_t>(height), kCostUnknown);
+    base_costs_.clear();
+    has_base_ = false;
     stamp_ns_ = now_ns();
     return true;
 }
 
 bool Costmap::set_static_layer(const CostmapView& static_map, std::string* error) {
     stamp_ns_ = now_ns();
+    restore_base();
     if (width_ <= 0 || height_ <= 0) {
         if (error) {
             *error = "costmap not initialized";
@@ -111,6 +114,7 @@ bool Costmap::set_static_layer(const CostmapView& static_map, std::string* error
             }
         }
     }
+    save_base();
     return true;
 }
 
@@ -119,6 +123,7 @@ void Costmap::fill_polygon(const std::vector<Vec2>& polygon, uint8_t cost) {
     if (polygon.size() < 3) {
         return;
     }
+    restore_base();
     for (int iy = 0; iy < height_; ++iy) {
         for (int ix = 0; ix < width_; ++ix) {
             Vec2 center{};
@@ -131,6 +136,18 @@ void Costmap::fill_polygon(const std::vector<Vec2>& polygon, uint8_t cost) {
             }
         }
     }
+    save_base();
+}
+
+void Costmap::restore_base() {
+    if (has_base_ && base_costs_.size() == costs_.size()) {
+        costs_ = base_costs_;
+    }
+}
+
+void Costmap::save_base() {
+    base_costs_ = costs_;
+    has_base_ = true;
 }
 
 void Costmap::inflate(double inscribed_radius, double inflation_radius, double cost_scaling) {
@@ -138,6 +155,8 @@ void Costmap::inflate(double inscribed_radius, double inflation_radius, double c
     if (width_ <= 0 || height_ <= 0 || inflation_radius <= 0.0) {
         return;
     }
+    // 幂等：每次都从"膨胀前"的数据重算，连调多次结果不变（审计 CM-1）。
+    restore_base();
     const double inscribed = std::max(0.0, std::min(inscribed_radius, inflation_radius));
     const double decay_span = inflation_radius - inscribed;
 
@@ -218,6 +237,7 @@ void Costmap::stamp_obstacles(const std::vector<DynamicObstacle>& obstacles) {
     if (obstacles.empty()) {
         return;
     }
+    restore_base();
     for (int iy = 0; iy < height_; ++iy) {
         for (int ix = 0; ix < width_; ++ix) {
             Vec2 center{};
@@ -235,6 +255,7 @@ void Costmap::stamp_obstacles(const std::vector<DynamicObstacle>& obstacles) {
             }
         }
     }
+    save_base();
 }
 
 uint8_t Costmap::cost_at(int ix, int iy) const {
@@ -248,7 +269,9 @@ void Costmap::set_cost(int ix, int iy, uint8_t cost) {
     if (ix < 0 || iy < 0 || ix >= width_ || iy >= height_) {
         return;
     }
+    restore_base();
     costs_[static_cast<size_t>(iy) * static_cast<size_t>(width_) + static_cast<size_t>(ix)] = cost;
+    save_base();
 }
 
 bool Costmap::world_to_grid(const Vec2& world, int* ix, int* iy) const {
