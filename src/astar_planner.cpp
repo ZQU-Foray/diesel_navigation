@@ -44,6 +44,11 @@ struct NodeGreater {
 /// 膨胀层可能写到的最大代价（与 costmap.cpp 的 kMaxInflatedCost 对齐）。
 constexpr uint8_t kMaxInflatedCostRef = 252;
 
+/// 捷径化时允许"直连比沿格链略贵"的余量（2%）。
+/// 来历：格子化会把直线走成锯齿，格链代价总是略高于真直线；不留余量就永远捷径化不了。
+/// 2% 是 2026-10-28 在 240x160 全自由图上试出来的上限——再大就会为了省两格而绕远。
+constexpr double kSmoothingCostSlack = 1.02;
+
 /// 8 邻接的行走代价权重：膨胀格更"贵"，但不禁止（禁止靠致死格）。
 double step_weight(uint8_t cost, double cost_weight, double prefer_weight) {
     if (cost == kCostLethal) {
@@ -313,7 +318,9 @@ NavError AstarPlanner::plan(const CostmapView& map, const Pose2& start, const Po
                 }
                 const double direct = segment_cost(map, cells[anchor], cells[next],
                                                    params_.cost_weight, params_.prefer_weight);
-                if (direct <= best_chain * 1.02) {
+                // 直连允许比"沿格链走"贵一点点：格子化会让直线路径的格链代价略高于直线，
+                // 不留这点余量就永远捷径化不了。2% 来自实测（审计 AS-3 要求注明出处）。
+                if (direct <= best_chain * kSmoothingCostSlack) {
                     best = next;
                 }
             }
@@ -333,8 +340,18 @@ NavError AstarPlanner::plan(const CostmapView& map, const Pose2& start, const Po
 
     out->reserve(reduced.size() + 2);
     out->push_back(Pose2{start.x, start.y, start.yaw});
-    for (const Vec2& point : reduced) {
-        out->push_back(Pose2{point.x, point.y, 0.0});
+    // 中间点的朝向按"前后两点连线"给：一律置 0 会让 Path 的位姿语义失效
+    // （审计 AS-2：起点有朝向、中间全 0、终点又有朝向，读的人会以为朝向没意义）。
+    for (size_t i = 0; i < reduced.size(); ++i) {
+        double yaw = 0.0;
+        const Vec2 before = (i == 0) ? Vec2{start.x, start.y} : reduced[i - 1];
+        const Vec2 after = (i + 1 < reduced.size()) ? reduced[i + 1] : Vec2{goal.x, goal.y};
+        const double dx = after.x - before.x;
+        const double dy = after.y - before.y;
+        if (std::hypot(dx, dy) > 1e-9) {
+            yaw = std::atan2(dy, dx);
+        }
+        out->push_back(Pose2{reduced[i].x, reduced[i].y, yaw});
     }
     out->push_back(Pose2{goal.x, goal.y, goal.yaw});
     return NavError::kNone;
