@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <vector>
 
 namespace foray {
 namespace nav {
@@ -32,27 +33,55 @@ double distance(const Vec2& a, const Vec2& b) {
     return std::sqrt(dx * dx + dy * dy);
 }
 
+/// 把 `p` 投到线段 [a,b] 上的参数 t（夹在 0..1）。
+double project_param(const Vec2& a, const Vec2& b, const Vec2& p) {
+    const double dx = b.x - a.x;
+    const double dy = b.y - a.y;
+    const double len2 = dx * dx + dy * dy;
+    if (len2 < 1e-18) {
+        return 0.0;
+    }
+    return clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / len2, 0.0, 1.0);
+}
+
 /// 从 `from` 沿路径向前走 `lookahead` 米，返回那个点（路径不够长就给终点）。
+/// @note 必须先找"车在路径上的位置"再往前走；从 path[0] 起算会让车过了目标点就倒车
+///       （2026-11-03 审计 PC-1，实测只走到 1.365 m）。
 Vec2 lookahead_point(const Path& path, const Vec2& from, double lookahead) {
-    Vec2 best{path.back().x, path.back().y};
-    double walked = 0.0;
-    for (size_t i = 0; i + 1 < path.size(); ++i) {
+    // 1) 各段累计弧长
+    const size_t n = path.size();
+    std::vector<double> cum(n, 0.0);
+    for (size_t i = 0; i + 1 < n; ++i) {
+        cum[i + 1] = cum[i] + distance({path[i].x, path[i].y}, {path[i + 1].x, path[i + 1].y});
+    }
+
+    // 2) 找车投影到路径上的弧长 s0
+    double s0 = 0.0;
+    double best = std::numeric_limits<double>::max();
+    for (size_t i = 0; i + 1 < n; ++i) {
         const Vec2 a{path[i].x, path[i].y};
         const Vec2 b{path[i + 1].x, path[i + 1].y};
-        const double segment = distance(a, b);
-        if (segment < 1e-9) {
-            continue;
+        const double t = project_param(a, b, from);
+        const Vec2 q{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t};
+        const double d2 = (q.x - from.x) * (q.x - from.x) + (q.y - from.y) * (q.y - from.y);
+        if (d2 < best) {
+            best = d2;
+            s0 = cum[i] + t * distance(a, b);
         }
-        if (walked + segment >= lookahead) {
-            const double remain = lookahead - walked;
-            const double t = remain / segment;
+    }
+
+    // 3) 沿弧长 s0 + lookahead 取点
+    const double target_s = s0 + lookahead;
+    for (size_t i = 0; i + 1 < n; ++i) {
+        if (cum[i + 1] >= target_s) {
+            const double seg = cum[i + 1] - cum[i];
+            const double t = seg > 1e-12 ? (target_s - cum[i]) / seg : 0.0;
+            const Vec2 a{path[i].x, path[i].y};
+            const Vec2 b{path[i + 1].x, path[i + 1].y};
             return Vec2{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t};
         }
-        walked += segment;
-        best = b;
     }
-    (void)from;
-    return best;
+    return Vec2{path.back().x, path.back().y};
 }
 
 /// 用"前视点方向"和"更远一点的方向"夹出的夹角估计曲率（1/m）。
@@ -95,12 +124,21 @@ NavError PursuitController::compute(const Pose2& pose, const Path& path, double 
     const Vec2 goal{path.back().x, path.back().y};
     const double goal_distance = distance(current, goal);
 
-    // 到点：输出零速度，交给状态机判到达。
+    // 到点：目标速度为零，但仍要过变化率限幅——不许一帧从巡航速度直接跌到 0。
+    // （2026-11-03 审计 PC-3：实测 2.500 m/s 单帧阶跃，契约上限 max_accel*dt = 0.300。）
     if (goal_distance <= params_.stop_tolerance) {
-        last_command_ = VelocityCommand{};
+        const double max_delta = params_.max_accel * dt;
+        const double delta = std::hypot(last_command_.vx, last_command_.vy);
+        VelocityCommand stop{};
+        if (delta > max_delta && delta > 1e-12) {
+            const double k = max_delta / delta;
+            stop.vx = last_command_.vx * (1.0 - k);
+            stop.vy = last_command_.vy * (1.0 - k);
+        }
+        last_command_ = stop;
         last_scale_ = 0.0;
         has_last_ = true;
-        *out = last_command_;
+        *out = stop;
         return NavError::kNone;
     }
 
