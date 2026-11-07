@@ -45,7 +45,7 @@ void NavEngine::build_safe_map(const CostmapView& map) {
     // 每次都从原图重建：动态障碍会变，缓存一份旧的比不做更危险。
     if (safe_.width() != map.width() || safe_.height() != map.height() ||
         safe_.resolution() != map.resolution()) {
-        if (!safe_.init(map.width(), map.height(), map.resolution(), Vec2{0.0, 0.0}, &error)) {
+        if (!safe_.init(map.width(), map.height(), map.resolution(), map.origin(), &error)) {
             return;
         }
     }
@@ -62,7 +62,7 @@ void NavEngine::build_guard_map(const CostmapView& map) {
     std::string error;
     if (guard_.width() != map.width() || guard_.height() != map.height() ||
         guard_.resolution() != map.resolution()) {
-        guard_.init(map.width(), map.height(), map.resolution(), Vec2{0.0, 0.0}, &error);
+        guard_.init(map.width(), map.height(), map.resolution(), map.origin(), &error);
     }
     guard_.set_static_layer(map, &error);
     const double radius = std::max(0.0, options_.robot_radius * 0.6);
@@ -71,7 +71,8 @@ void NavEngine::build_guard_map(const CostmapView& map) {
     }
 }
 
-void NavEngine::clear_disc(Costmap& map, const Vec2& center, double radius) {
+void NavEngine::clear_disc(Costmap& map, const CostmapView& source, const Vec2& center,
+                           double radius) {
     int cx = 0;
     int cy = 0;
     if (!map.world_to_grid(center, &cx, &cy)) {
@@ -80,6 +81,11 @@ void NavEngine::clear_disc(Costmap& map, const Vec2& center, double radius) {
     const int span = static_cast<int>(std::ceil(radius / map.resolution()));
     for (int dy = -span; dy <= span; ++dy) {
         for (int dx = -span; dx <= span; ++dx) {
+            // 原图上就是墙/未知，一律不动：清圈只负责"撤销膨胀"，不负责拆墙。
+            const uint8_t original = source.cost_at(cx + dx, cy + dy);
+            if (original == kCostLethal || original == kCostUnknown) {
+                continue;
+            }
             map.force_cost(cx + dx, cy + dy, kCostFree);
         }
     }
@@ -173,7 +179,7 @@ NavError NavEngine::plan_once(const CostmapView& map, const Pose2& pose, const P
     }
 
     build_safe_map(map);
-    clear_disc(safe_, Vec2{goal.x, goal.y}, options_.robot_radius * 1.2);
+    clear_disc(safe_, map, Vec2{goal.x, goal.y}, options_.robot_radius * 1.2);
     PlanningOptions options;
     NavError error = planner_.plan(safe_, pose, goal, options, out);
     if (error == NavError::kNone) {
@@ -182,8 +188,8 @@ NavError NavEngine::plan_once(const CostmapView& map, const Pose2& pose, const P
     // 兜底：车贴着墙时，它自己那一格也被算成障碍，规划器于是"原地无法出发"。
     // 清掉车周围一圈再试一次——车真的在那儿，它必须能开出来。
     build_safe_map(map);
-    clear_disc(safe_, Vec2{pose.x, pose.y}, options_.robot_radius * 1.3);
-    clear_disc(safe_, Vec2{goal.x, goal.y}, options_.robot_radius * 1.2);
+    clear_disc(safe_, map, Vec2{pose.x, pose.y}, options_.robot_radius * 1.3);
+    clear_disc(safe_, map, Vec2{goal.x, goal.y}, options_.robot_radius * 1.2);
     out->clear();
     error = planner_.plan(safe_, pose, goal, options, out);
     return error;

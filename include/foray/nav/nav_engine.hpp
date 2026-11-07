@@ -104,9 +104,11 @@ class NavEngine {
 
     /// 刹车用的"护栏地图"：只按半个车体半径膨胀——留一点余量，但不至于把窄口堵死。
     void build_guard_map(const CostmapView& map);
-
-    /// 把 `center` 周围 `radius` 内的格子清成自由（起点/终点兜底用）。
-    static void clear_disc(Costmap& map, const Vec2& center, double radius);
+    /// 把 `center` 周围 `radius` 内**被膨胀层盖住**的格子清成自由（起点/终点兜底用）。
+    /// @param source 原图：原图上就是致死/未知的格子**不清**——否则会在薄墙上打出洞，
+    ///               规划出的路径直接穿墙（2026-11-07 实测 33 条路径里 13 条穿墙）。
+    static void clear_disc(Costmap& map, const CostmapView& source, const Vec2& center,
+                           double radius);
 
     /// 从 `a` 到 `b` 这一段（按格子采样）是否没有致死/未知格。
     bool segment_clear(const CostmapView& map, const Vec2& a, const Vec2& b) const;
