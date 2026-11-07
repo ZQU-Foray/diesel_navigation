@@ -244,6 +244,54 @@ void test_gap_passage_keeps_clearance() {
     check(min_clear >= 0.18, "gap: keeps at least 0.18 m clearance");
 }
 
+/// 目标容差比控制器停车容差还小时，也必须真的到得了（原来会卡在"几乎到"）。
+void test_tight_goal_tolerance() {
+    const foray::nav::Costmap map = make_open_map();
+    foray::nav::NavEngine engine;
+    foray::nav::NavGoal goal;
+    goal.pose = foray::nav::Pose2{2.5, 1.5, 0.0};
+    goal.xy_tolerance = 0.08;
+
+    foray::nav::Pose2 pose{0.5, 0.5, 0.0};
+    check(engine.set_goal(map, goal, pose) == foray::nav::NavError::kNone, "tight: plan ok");
+    bool arrived = false;
+    for (int step = 0; step < 4000; ++step) {
+        foray::nav::VelocityCommand command{};
+        if (engine.step(map, pose, kDt, &command) != foray::nav::NavError::kNone &&
+            engine.status() == foray::nav::NavStatus::kFailed) {
+            break;
+        }
+        pose.x += command.vx * kDt;
+        pose.y += command.vy * kDt;
+        if (engine.status() == foray::nav::NavStatus::kReached) {
+            arrived = true;
+            break;
+        }
+    }
+    check(arrived, "tight: reaches with an 8 cm tolerance");
+}
+
+/// reset() 不能把构造时给的参数丢掉（否则行为会被悄悄改回默认值）。
+void test_reset_keeps_params() {
+    foray::nav::AstarParams planner_params;
+    planner_params.smooth = false; // 关掉平滑：路径点数明显更多，能当指纹用
+    foray::nav::NavEngine engine(planner_params, foray::nav::PursuitParams{});
+
+    const foray::nav::Costmap map = make_open_map();
+    foray::nav::NavGoal goal;
+    goal.pose = foray::nav::Pose2{3.5, 2.5, 0.0};
+    check(engine.set_goal(map, goal, foray::nav::Pose2{0.5, 0.5, 0.0}) ==
+              foray::nav::NavError::kNone,
+          "reset: first plan ok");
+    const size_t first_points = engine.path().size();
+
+    engine.reset();
+    check(engine.set_goal(map, goal, foray::nav::Pose2{0.5, 0.5, 0.0}) ==
+              foray::nav::NavError::kNone,
+          "reset: second plan ok");
+    check(engine.path().size() == first_points, "reset: planner params survive reset");
+}
+
 } // namespace
 
 int main() {
@@ -253,6 +301,8 @@ int main() {
     test_step_without_goal();
     test_hold_after_reached();
     test_gap_passage_keeps_clearance();
+    test_tight_goal_tolerance();
+    test_reset_keeps_params();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");

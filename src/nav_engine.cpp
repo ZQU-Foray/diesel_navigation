@@ -91,11 +91,14 @@ bool NavEngine::segment_clear(const CostmapView& map, const Vec2& a, const Vec2&
 }
 
 NavEngine::NavEngine(const AstarParams& planner_params, const PursuitParams& controller_params)
-    : planner_(planner_params), controller_(controller_params) {
+    : planner_(planner_params), controller_(controller_params), planner_params_(planner_params),
+      controller_params_(controller_params) {
 }
 
 void NavEngine::reset() {
-    planner_ = AstarPlanner{};
+    // 用构造时给的那份参数重建，不能退回编译期默认值（否则 reset 会悄悄改行为）。
+    planner_ = AstarPlanner{planner_params_};
+    controller_ = PursuitController{controller_params_};
     controller_.reset();
     goal_ = NavGoal{};
     path_.clear();
@@ -113,6 +116,15 @@ NavError NavEngine::set_goal(const CostmapView& map, const NavGoal& goal, const 
     stall_timer_s_ = 0.0;
     has_baseline_ = false;
     status_ = NavStatus::kPlanning;
+
+    // 控制器的停车容差必须比目标容差小：控制器在 stop_tolerance 处就收油，
+    // 若它 ≥ goal.xy_tolerance，车会停在"几乎到"的位置，引擎永远判不到达，
+    // 于是停滞→重规划→耗尽（2026-11-07 用 0.08 m 目标容差实测复现）。
+    PursuitParams pursuit = controller_params_;
+    if (pursuit.stop_tolerance >= goal.xy_tolerance) {
+        pursuit.stop_tolerance = goal.xy_tolerance * 0.8;
+        controller_ = PursuitController{pursuit};
+    }
 
     build_safe_map(map);
     PlanningOptions options;
@@ -212,7 +224,7 @@ bool NavEngine::reached(const Pose2& pose) const {
         return true;
     }
     const double heading_error = std::fabs(normalize_angle(goal_.pose.yaw - pose.yaw));
-    return heading_error <= 0.05;
+    return heading_error <= options_.heading_tolerance;
 }
 
 NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,

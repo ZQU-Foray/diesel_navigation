@@ -52,6 +52,8 @@ class NavEngine {
         double preview_time_s{0.15};
         /// 撞上去就按这个比例减速（爬行），还不行为零速并重规划。
         double creep_scale{0.25};
+        /// 到点判定的朝向容差（弧度），只在 `NavGoal::require_heading` 为真时用。
+        double heading_tolerance{0.05};
     };
 
     NavEngine() = default;
@@ -110,6 +112,9 @@ class NavEngine {
 
     AstarPlanner planner_{};
     PursuitController controller_{};
+    /// 构造时给的参数：`reset()` 要还回这一份，而不是编译期默认值。
+    AstarParams planner_params_{};
+    PursuitParams controller_params_{};
     Options options_{};
     /// 按车体半径膨胀过的地图副本：规划与安全自检都用它，不用外部原图。
     Costmap safe_{};
