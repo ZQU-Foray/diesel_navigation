@@ -406,6 +406,23 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
     controller_.set_lookahead_scale(1.0);
 
     if (!safe_found) {
+        // 先退再跟：车已经贴墙、路径又贴着墙走时，直接跟只会撞——先朝"远离最近障碍"的方向挪一点。
+        {
+            const Vec2 here{pose.x, pose.y};
+            const Vec2 away = escape_direction(map, here);
+            if (away.x != 0.0 || away.y != 0.0) {
+                const double speed = controller_.params().max_linear * 0.3;
+                VelocityCommand back{away.x * speed, away.y * speed, 0.0};
+                const Vec2 ahead{here.x + back.vx * dt * 4.0, here.y + back.vy * dt * 4.0};
+                if (segment_clear(map, here, ahead) &&
+                    local_clearance(map, ahead) > local_clearance(map, here)) {
+                    *out = back;
+                    last_error_ = NavError::kNone;
+                    return NavError::kNone;
+                }
+            }
+        }
+
         // 到点放宽：终点本身可能就贴着墙，最后这一段必须允许走进去，
         // 否则会停在离终点十几厘米处永远判不到达（2026-11-07 trace 实测：停在 16.6 cm）。
         const double to_goal = std::hypot(pose.x - goal_.pose.x, pose.y - goal_.pose.y);
