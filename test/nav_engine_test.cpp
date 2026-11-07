@@ -241,7 +241,9 @@ void test_gap_passage_keeps_clearance() {
     }
     check(engine.status() == foray::nav::NavStatus::kReached, "gap: reaches through the gap");
     check(hits == 0, "gap: never steps onto a lethal cell");
-    check(min_clear >= 0.18, "gap: keeps at least 0.18 m clearance");
+    // 净空下限跟着车体半径走：护栏层用的是 0.6×半径（0.25 × 0.6 = 0.15 m）。
+    // 0.14 留一点网格离散误差，别把阈值卡在正中间。
+    check(min_clear >= 0.14, "gap: keeps clearance proportional to robot_radius");
 }
 
 /// 目标容差比控制器停车容差还小时，也必须真的到得了（原来会卡在"几乎到"）。
