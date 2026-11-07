@@ -128,10 +128,8 @@ NavError NavEngine::set_goal(const CostmapView& map, const NavGoal& goal, const 
         controller_ = PursuitController{pursuit};
     }
 
-    build_safe_map(map);
-    PlanningOptions options;
     path_.clear();
-    const NavError error = planner_.plan(safe_, pose, goal.pose, options, &path_);
+    const NavError error = plan_once(map, pose, goal.pose, &path_);
     last_error_ = error;
     if (error != NavError::kNone) {
         path_.clear();
@@ -146,6 +144,33 @@ NavError NavEngine::set_goal(const CostmapView& map, const NavGoal& goal, const 
     return NavError::kNone;
 }
 
+NavError NavEngine::plan_once(const CostmapView& map, const Pose2& pose, const Pose2& goal,
+                              Path* out) {
+    build_safe_map(map);
+    PlanningOptions options;
+    NavError error = planner_.plan(safe_, pose, goal, options, out);
+    if (error == NavError::kNone) {
+        return error;
+    }
+    // 兜底：车贴着墙时，它自己那一格也被算成障碍，规划器于是"原地无法出发"。
+    // 清掉车周围一圈再试一次——车真的在那儿，它必须能开出来。
+    build_safe_map(map);
+    int cx = 0;
+    int cy = 0;
+    if (safe_.world_to_grid(Vec2{pose.x, pose.y}, &cx, &cy)) {
+        const int span =
+            static_cast<int>(std::ceil(options_.robot_radius * 1.3 / safe_.resolution()));
+        for (int dy = -span; dy <= span; ++dy) {
+            for (int dx = -span; dx <= span; ++dx) {
+                safe_.set_cost(cx + dx, cy + dy, kCostFree);
+            }
+        }
+    }
+    out->clear();
+    error = planner_.plan(safe_, pose, goal, options, out);
+    return error;
+}
+
 NavError NavEngine::replan(const CostmapView& map, const Pose2& pose) {
     if (replans_ >= options_.max_replans) {
         status_ = NavStatus::kFailed;
@@ -155,28 +180,8 @@ NavError NavEngine::replan(const CostmapView& map, const Pose2& pose) {
     ++replans_;
     status_ = NavStatus::kRecovering;
 
-    build_safe_map(map);
     Path fresh;
-    PlanningOptions options;
-    NavError error = planner_.plan(safe_, pose, goal_.pose, options, &fresh);
-    if (error != NavError::kNone) {
-        // 车已经贴近墙、落在膨胀层里时，规划器会把自己的格子当成障碍，于是"原地无法出发"。
-        // 这时把车周围一圈清成自由再试一次——车真的在那儿，它必须能开出来。
-        build_safe_map(map);
-        int cx = 0;
-        int cy = 0;
-        if (safe_.world_to_grid(Vec2{pose.x, pose.y}, &cx, &cy)) {
-            const int span =
-                static_cast<int>(std::ceil(options_.robot_radius * 1.3 / safe_.resolution()));
-            for (int dy = -span; dy <= span; ++dy) {
-                for (int dx = -span; dx <= span; ++dx) {
-                    safe_.set_cost(cx + dx, cy + dy, kCostFree);
-                }
-            }
-        }
-        fresh.clear();
-        error = planner_.plan(safe_, pose, goal_.pose, options, &fresh);
-    }
+    const NavError error = plan_once(map, pose, goal_.pose, &fresh);
     last_error_ = error;
     if (error != NavError::kNone) {
         status_ = NavStatus::kFailed;

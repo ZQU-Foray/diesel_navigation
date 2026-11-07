@@ -92,6 +92,10 @@ class NavEngine {
     void reset();
 
   private:
+    /// 规划一次，带"起点在膨胀层里"的兜底：清掉车周围一圈再试一次。
+    /// 车已经贴墙时，规划器会把自己的格子当障碍，不兜底就永远发不出去。
+    NavError plan_once(const CostmapView& map, const Pose2& pose, const Pose2& goal, Path* out);
+
     /// 重新规划；成功则更新 `path_` 并回到 `kFollowing`。
     NavError replan(const CostmapView& map, const Pose2& pose);
 
