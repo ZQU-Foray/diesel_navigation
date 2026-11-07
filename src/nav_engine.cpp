@@ -406,31 +406,31 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
     controller_.set_lookahead_scale(1.0);
 
     if (!safe_found) {
-        // 先退再跟：车已经贴墙、路径又贴着墙走时，直接跟只会撞——先朝"远离最近障碍"的方向挪一点。
+        // 先退再跟：车贴墙、路径也贴墙时，直接跟只会撞。
+        // 做法：八个方向各探 0.3 m，挑"净空最大且确实变大"的那个走一小步。
+        // 只认"远离最近障碍"不够——最近那面墙可能在地图边缘，退无可退（2026-11-07 边缘角落 case）。
         {
             const Vec2 here{pose.x, pose.y};
-            const Vec2 away = escape_direction(map, here);
-            if (away.x != 0.0 || away.y != 0.0) {
-                const double speed = controller_.params().max_linear * 0.3;
-                VelocityCommand back{away.x * speed, away.y * speed, 0.0};
-                const Vec2 ahead{here.x + back.vx * dt * 4.0, here.y + back.vy * dt * 4.0};
-                if (segment_clear(map, here, ahead) &&
-                    local_clearance(map, ahead) > local_clearance(map, here)) {
-                    *out = back;
-                    last_error_ = NavError::kNone;
-                    return NavError::kNone;
+            const double here_clear = local_clearance(map, here);
+            const double probe = std::max(0.3, options_.robot_radius * 1.2);
+            double best_clear = here_clear;
+            Vec2 best_dir{0.0, 0.0};
+            for (int k = 0; k < 8; ++k) {
+                const double angle = 2.0 * 3.14159265358979323846 * static_cast<double>(k) / 8.0;
+                const Vec2 dir{std::cos(angle), std::sin(angle)};
+                const Vec2 ahead{here.x + dir.x * probe, here.y + dir.y * probe};
+                if (!segment_clear(map, here, ahead)) {
+                    continue;
+                }
+                const double clear = local_clearance(map, ahead);
+                if (clear > best_clear + 0.01) {
+                    best_clear = clear;
+                    best_dir = dir;
                 }
             }
-        }
-
-        // 到点放宽：终点本身可能就贴着墙，最后这一段必须允许走进去，
-        // 否则会停在离终点十几厘米处永远判不到达（2026-11-07 trace 实测：停在 16.6 cm）。
-        const double to_goal = std::hypot(pose.x - goal_.pose.x, pose.y - goal_.pose.y);
-        if (to_goal <= std::max(0.35, options_.robot_radius * 1.5)) {
-            controller_.set_lookahead_scale(1.0);
-            VelocityCommand approach{};
-            if (controller_.compute(pose, path_, dt, &approach) == NavError::kNone) {
-                *out = approach;
+            if (best_dir.x != 0.0 || best_dir.y != 0.0) {
+                const double speed = controller_.params().max_linear * 0.3;
+                *out = VelocityCommand{best_dir.x * speed, best_dir.y * speed, 0.0};
                 last_error_ = NavError::kNone;
                 return NavError::kNone;
             }
