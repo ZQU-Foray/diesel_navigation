@@ -378,6 +378,18 @@ uint8_t Costmap::cost_at(int ix, int iy) const {
     return costs_[static_cast<size_t>(iy) * static_cast<size_t>(width_) + static_cast<size_t>(ix)];
 }
 
+void Costmap::force_cost(int ix, int iy, uint8_t cost) {
+    if (ix < 0 || iy < 0 || ix >= width_ || iy >= height_) {
+        return;
+    }
+    const size_t index =
+        static_cast<size_t>(iy) * static_cast<size_t>(width_) + static_cast<size_t>(ix);
+    costs_[index] = cost;
+    if (has_base_ && base_costs_.size() == costs_.size()) {
+        base_costs_[index] = cost;
+    }
+}
+
 void Costmap::set_cost(int ix, int iy, uint8_t cost) {
     if (ix < 0 || iy < 0 || ix >= width_ || iy >= height_) {
         return;

@@ -90,8 +90,13 @@ class Costmap : public CostmapView {
     bool world_to_grid(const Vec2& world, int* ix, int* iy) const override;
     bool grid_to_world(int ix, int iy, Vec2* world) const override;
 
-    /// 直接改写某一格（测试与装配用）。
+    /// 直接改写某一格（测试与装配用）。**会先还原膨胀前快照**——用于"层写入"。
     void set_cost(int ix, int iy, uint8_t cost);
+
+    /// 直接覆盖某一格，**同时改快照**（不还原膨胀）。
+    /// 用于"在已经膨胀好的图上挖一个洞"：起终点兜底、临时放行等。
+    /// @warning 用 `set_cost()` 做这件事会把整张图的膨胀抹掉（2026-11-07 踩过）。
+    void force_cost(int ix, int iy, uint8_t cost);
 
     /// 统计致死格数量（测试与可观测用）。
     int lethal_count() const;

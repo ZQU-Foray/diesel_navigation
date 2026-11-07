@@ -71,6 +71,20 @@ void NavEngine::build_guard_map(const CostmapView& map) {
     }
 }
 
+void NavEngine::clear_disc(Costmap& map, const Vec2& center, double radius) {
+    int cx = 0;
+    int cy = 0;
+    if (!map.world_to_grid(center, &cx, &cy)) {
+        return;
+    }
+    const int span = static_cast<int>(std::ceil(radius / map.resolution()));
+    for (int dy = -span; dy <= span; ++dy) {
+        for (int dx = -span; dx <= span; ++dx) {
+            map.force_cost(cx + dx, cy + dy, kCostFree);
+        }
+    }
+}
+
 bool NavEngine::segment_clear(const CostmapView& map, const Vec2& a, const Vec2& b) const {
     const double length = std::hypot(b.x - a.x, b.y - a.y);
     const double step = std::max(0.01, map.resolution() * 0.5);
@@ -146,7 +160,20 @@ NavError NavEngine::set_goal(const CostmapView& map, const NavGoal& goal, const 
 
 NavError NavEngine::plan_once(const CostmapView& map, const Pose2& pose, const Pose2& goal,
                               Path* out) {
+    // 目标本身落在墙里/未知区里，是**非法目标**，必须拒；只有在原图上本来就自由、
+    // 只是被自己的膨胀层盖住的，才清一圈放行。
+    int gx = 0;
+    int gy = 0;
+    if (!map.world_to_grid(Vec2{goal.x, goal.y}, &gx, &gy)) {
+        return NavError::kStartOutsideMap;
+    }
+    const uint8_t goal_cost = map.cost_at(gx, gy);
+    if (goal_cost == kCostLethal || goal_cost == kCostUnknown) {
+        return NavError::kGoalInLethal;
+    }
+
     build_safe_map(map);
+    clear_disc(safe_, Vec2{goal.x, goal.y}, options_.robot_radius * 1.2);
     PlanningOptions options;
     NavError error = planner_.plan(safe_, pose, goal, options, out);
     if (error == NavError::kNone) {
@@ -155,17 +182,8 @@ NavError NavEngine::plan_once(const CostmapView& map, const Pose2& pose, const P
     // 兜底：车贴着墙时，它自己那一格也被算成障碍，规划器于是"原地无法出发"。
     // 清掉车周围一圈再试一次——车真的在那儿，它必须能开出来。
     build_safe_map(map);
-    int cx = 0;
-    int cy = 0;
-    if (safe_.world_to_grid(Vec2{pose.x, pose.y}, &cx, &cy)) {
-        const int span =
-            static_cast<int>(std::ceil(options_.robot_radius * 1.3 / safe_.resolution()));
-        for (int dy = -span; dy <= span; ++dy) {
-            for (int dx = -span; dx <= span; ++dx) {
-                safe_.set_cost(cx + dx, cy + dy, kCostFree);
-            }
-        }
-    }
+    clear_disc(safe_, Vec2{pose.x, pose.y}, options_.robot_radius * 1.3);
+    clear_disc(safe_, Vec2{goal.x, goal.y}, options_.robot_radius * 1.2);
     out->clear();
     error = planner_.plan(safe_, pose, goal, options, out);
     return error;
@@ -313,8 +331,10 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
             continue;
         }
         const Vec2 here{pose.x, pose.y};
-        const Vec2 ahead{pose.x + candidate.vx * options_.preview_time_s,
-                         pose.y + candidate.vy * options_.preview_time_s};
+        const double v = std::hypot(candidate.vx, candidate.vy);
+        const double horizon = std::max(0.10, v * options_.preview_time_s);
+        const double scale_dir = v > 1e-9 ? horizon / v : 0.0;
+        const Vec2 ahead{pose.x + candidate.vx * scale_dir, pose.y + candidate.vy * scale_dir};
         if (segment_clear(guard_, here, ahead)) {
             chosen = candidate;
             safe_found = true;
