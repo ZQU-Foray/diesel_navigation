@@ -292,6 +292,30 @@ void test_reset_keeps_params() {
     check(engine.path().size() == first_points, "reset: planner params survive reset");
 }
 
+/// 非法输入不许谎报成功：dt<=0、NaN 位姿都要返回 kInvalidInput。
+void test_rejects_invalid_input() {
+    const foray::nav::Costmap map = make_open_map();
+    foray::nav::NavEngine engine;
+    foray::nav::NavGoal goal;
+    goal.pose = foray::nav::Pose2{2.0, 1.0, 0.0};
+    check(engine.set_goal(map, goal, foray::nav::Pose2{0.5, 0.5, 0.0}) ==
+              foray::nav::NavError::kNone,
+          "invalid: plan ok");
+
+    foray::nav::VelocityCommand command{};
+    check(engine.step(map, foray::nav::Pose2{0.5, 0.5, 0.0}, 0.0, &command) ==
+              foray::nav::NavError::kInvalidInput,
+          "invalid: dt == 0 rejected");
+    check(command.vx == 0.0 && command.vy == 0.0, "invalid: zero output on bad dt");
+    check(engine.status() == foray::nav::NavStatus::kFollowing, "invalid: state not corrupted");
+
+    const double nan = std::nan("");
+    check(engine.step(map, foray::nav::Pose2{nan, 0.5, 0.0}, kDt, &command) ==
+              foray::nav::NavError::kInvalidInput,
+          "invalid: NaN pose rejected");
+    check(engine.status() != foray::nav::NavStatus::kReached, "invalid: NaN pose is not 'reached'");
+}
+
 } // namespace
 
 int main() {
@@ -303,6 +327,7 @@ int main() {
     test_gap_passage_keeps_clearance();
     test_tight_goal_tolerance();
     test_reset_keeps_params();
+    test_rejects_invalid_input();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");

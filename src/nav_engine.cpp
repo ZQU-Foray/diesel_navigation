@@ -236,6 +236,13 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
     }
     *out = VelocityCommand{};
 
+    // 非法输入必须挡住：dt<=0 会让控制器算不出方向，NaN 位姿会让所有比较都为假——
+    // 不挡的话，NaN 位姿会被 reached() 判成"到了"（2026-11-07 实测：status 变成 kReached）。
+    if (!(dt > 0.0) || !std::isfinite(dt) || !std::isfinite(pose.x) || !std::isfinite(pose.y) ||
+        !std::isfinite(pose.yaw)) {
+        return NavError::kInvalidInput;
+    }
+
     if (status_ == NavStatus::kReached || status_ == NavStatus::kFailed) {
         return last_error_;
     }
