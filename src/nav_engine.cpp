@@ -45,7 +45,9 @@ void NavEngine::build_safe_map(const CostmapView& map) {
     // 每次都从原图重建：动态障碍会变，缓存一份旧的比不做更危险。
     if (safe_.width() != map.width() || safe_.height() != map.height() ||
         safe_.resolution() != map.resolution()) {
-        safe_.init(map.width(), map.height(), map.resolution(), Vec2{0.0, 0.0}, &error);
+        if (!safe_.init(map.width(), map.height(), map.resolution(), Vec2{0.0, 0.0}, &error)) {
+            return;
+        }
     }
     // 清成未知，再用静态层把非未知格刷进来（set_static_layer 内部会 reset）。
     safe_.set_static_layer(map, &error);
@@ -239,6 +241,14 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
     }
     if (status_ == NavStatus::kIdle) {
         last_error_ = NavError::kInvalidInput;
+        *out = VelocityCommand{};
+        return last_error_;
+    }
+
+    // 0) 路径没了（上一个周期重规划失败但没有被检查到）就先判失败，别拿空路径去算。
+    if (path_.size() < 2) {
+        status_ = NavStatus::kFailed;
+        last_error_ = NavError::kNoPath;
         *out = VelocityCommand{};
         return last_error_;
     }
