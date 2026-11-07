@@ -58,14 +58,13 @@ void NavEngine::build_safe_map(const CostmapView& map) {
     }
 }
 
-void NavEngine::build_guard_map(const CostmapView& map) {
+void NavEngine::build_guard_map(const CostmapView& map, double radius) {
     std::string error;
     if (guard_.width() != map.width() || guard_.height() != map.height() ||
         guard_.resolution() != map.resolution()) {
         guard_.init(map.width(), map.height(), map.resolution(), map.origin(), &error);
     }
     guard_.set_static_layer(map, &error);
-    const double radius = std::max(0.0, options_.robot_radius * 0.6);
     if (radius > 0.0) {
         guard_.inflate(radius, radius * 1.2, 3.0);
     }
@@ -89,6 +88,35 @@ void NavEngine::clear_disc(Costmap& map, const CostmapView& source, const Vec2& 
             map.force_cost(cx + dx, cy + dy, kCostFree);
         }
     }
+}
+
+Vec2 NavEngine::escape_direction(const CostmapView& map, const Vec2& point) const {
+    int cx = 0;
+    int cy = 0;
+    if (!map.world_to_grid(point, &cx, &cy)) {
+        return Vec2{0.0, 0.0};
+    }
+    const int span = static_cast<int>(std::ceil(options_.robot_radius * 2.0 / map.resolution()));
+    double best = std::numeric_limits<double>::max();
+    Vec2 away{0.0, 0.0};
+    for (int dy = -span; dy <= span; ++dy) {
+        for (int dx = -span; dx <= span; ++dx) {
+            if (map.cost_at(cx + dx, cy + dy) != kCostLethal) {
+                continue;
+            }
+            Vec2 lethal{};
+            if (!map.grid_to_world(cx + dx, cy + dy, &lethal)) {
+                continue;
+            }
+            const double d = std::hypot(point.x - lethal.x, point.y - lethal.y);
+            if (d < best) {
+                best = d;
+                const double inv = d > 1e-6 ? 1.0 / d : 0.0;
+                away = Vec2{(point.x - lethal.x) * inv, (point.y - lethal.y) * inv};
+            }
+        }
+    }
+    return away;
 }
 
 double NavEngine::local_clearance(const CostmapView& map, const Vec2& point) const {
@@ -348,7 +376,12 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
 
     // 4) 交给控制器，但前视要"遇阻缩短"：对着远处的点硬走会切角撞墙。
     //    依次试 1.0 / 0.65 / 0.4 / 0.2 倍前视，取第一个前方安全的结果。
-    build_guard_map(map);
+    // 护栏半径自适应：车已经贴得比护栏还近时，护栏按实际净空退一步——
+    // 否则"我脚下就是禁区"，任何动作都判死，车原地罚站（2026-11-07 实测起点 0.12 m）。
+    const double here_clear = local_clearance(map, Vec2{pose.x, pose.y});
+    const double guard_radius = std::min(options_.robot_radius * 0.6,
+                                         std::max(options_.robot_radius * 0.4, here_clear * 0.8));
+    build_guard_map(map, guard_radius);
     const double scales[4] = {1.0, 0.65, 0.4, 0.2};
     VelocityCommand chosen{};
     bool safe_found = false;
