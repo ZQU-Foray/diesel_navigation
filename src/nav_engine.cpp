@@ -344,6 +344,18 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
     controller_.set_lookahead_scale(1.0);
 
     if (!safe_found) {
+        // 到点放宽：终点本身可能就贴着墙，最后这一段必须允许走进去，
+        // 否则会停在离终点十几厘米处永远判不到达（2026-11-07 trace 实测：停在 16.6 cm）。
+        const double to_goal = std::hypot(pose.x - goal_.pose.x, pose.y - goal_.pose.y);
+        if (to_goal <= std::max(0.35, options_.robot_radius * 1.5)) {
+            controller_.set_lookahead_scale(1.0);
+            VelocityCommand approach{};
+            if (controller_.compute(pose, path_, dt, &approach) == NavError::kNone) {
+                *out = approach;
+                last_error_ = NavError::kNone;
+                return NavError::kNone;
+            }
+        }
         // 缩到最小前视也撞：这一帧停住，重规划交给停滞判定（别在这里把次数烧光）。
         controller_.reset();
         last_error_ = NavError::kProgressStalled;

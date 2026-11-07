@@ -73,6 +73,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(nav_demo PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
+add_executable(nav_trace apps/nav_trace.cpp)
+target_link_libraries(nav_trace PRIVATE foray_navigation)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(nav_trace PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+
 add_executable(types_test test/types_test.cpp)
 target_link_libraries(types_test PRIVATE foray_navigation)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
