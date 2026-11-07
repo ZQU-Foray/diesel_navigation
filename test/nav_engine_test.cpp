@@ -318,6 +318,63 @@ void test_rejects_invalid_input() {
     check(engine.status() != foray::nav::NavStatus::kReached, "invalid: NaN pose is not 'reached'");
 }
 
+/// 原点非零的地图：路径必须与真实的墙对齐。
+/// 这个 bug 之前一直躲着，就是因为所有测试地图的 origin 都是 (0,0)
+/// （2026-11-07：真图 origin=(-0.4,-0.4)，安全图用了 (0,0)，整张布局偏 0.4 m，路径穿墙）。
+void test_nonzero_origin_alignment() {
+    foray::nav::Costmap map;
+    std::string error;
+    const foray::nav::Vec2 origin{-2.0, -3.0};
+    check(map.init(kW, kH, kRes, origin, &error), "origin: init");
+
+    // 全自由，再在中间立一道竖墙（世界坐标 x ∈ [-0.05, 0.05]）
+    for (int iy = 0; iy < kH; ++iy) {
+        for (int ix = 0; ix < kW; ++ix) {
+            map.set_cost(ix, iy, foray::nav::kCostFree);
+        }
+    }
+    for (int iy = 0; iy < kH; ++iy) {
+        for (int ix = 0; ix < kW; ++ix) {
+            foray::nav::Vec2 world{};
+            if (!map.grid_to_world(ix, iy, &world)) {
+                continue;
+            }
+            if (world.x >= -0.05 && world.x <= 0.05 && world.y < -1.0) {
+                map.set_cost(ix, iy, foray::nav::kCostLethal);
+            }
+        }
+    }
+
+    // 起点在墙左、终点在墙右；墙从 y=-3 立到 y=-1，只有上方能绕。
+    foray::nav::NavEngine engine;
+    foray::nav::NavGoal goal;
+    goal.pose = foray::nav::Pose2{1.0, -2.0, 0.0};
+    const foray::nav::Pose2 start{-1.0, -2.0, 0.0};
+    check(engine.set_goal(map, goal, start) == foray::nav::NavError::kNone, "origin: plan ok");
+
+    // 逐段采样，确认没有一步踩在致死格上。
+    int crossings = 0;
+    const auto& path = engine.path();
+    for (size_t i = 0; i + 1 < path.size(); ++i) {
+        const double length = std::hypot(path[i + 1].x - path[i].x, path[i + 1].y - path[i].y);
+        const int samples = std::max(2, static_cast<int>(length / (kRes * 0.5)));
+        for (int k = 0; k <= samples; ++k) {
+            const double t = static_cast<double>(k) / samples;
+            const foray::nav::Vec2 p{path[i].x + (path[i + 1].x - path[i].x) * t,
+                                     path[i].y + (path[i + 1].y - path[i].y) * t};
+            int ix = 0;
+            int iy = 0;
+            if (!map.world_to_grid(p, &ix, &iy)) {
+                continue;
+            }
+            if (map.cost_at(ix, iy) == foray::nav::kCostLethal) {
+                ++crossings;
+            }
+        }
+    }
+    check(crossings == 0, "origin: path never crosses a wall on a shifted map");
+}
+
 } // namespace
 
 int main() {
@@ -330,6 +387,7 @@ int main() {
     test_tight_goal_tolerance();
     test_reset_keeps_params();
     test_rejects_invalid_input();
+    test_nonzero_origin_alignment();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");
