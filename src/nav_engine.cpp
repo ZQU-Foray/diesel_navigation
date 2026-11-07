@@ -91,6 +91,29 @@ void NavEngine::clear_disc(Costmap& map, const CostmapView& source, const Vec2& 
     }
 }
 
+double NavEngine::local_clearance(const CostmapView& map, const Vec2& point) const {
+    int cx = 0;
+    int cy = 0;
+    if (!map.world_to_grid(point, &cx, &cy)) {
+        return 0.0;
+    }
+    const int span = static_cast<int>(std::ceil(options_.robot_radius * 2.0 / map.resolution()));
+    double best = std::numeric_limits<double>::max();
+    for (int dy = -span; dy <= span; ++dy) {
+        for (int dx = -span; dx <= span; ++dx) {
+            if (map.cost_at(cx + dx, cy + dy) != kCostLethal) {
+                continue;
+            }
+            Vec2 lethal{};
+            if (!map.grid_to_world(cx + dx, cy + dy, &lethal)) {
+                continue;
+            }
+            best = std::min(best, std::hypot(point.x - lethal.x, point.y - lethal.y));
+        }
+    }
+    return best == std::numeric_limits<double>::max() ? options_.robot_radius * 2.0 : best;
+}
+
 bool NavEngine::segment_clear(const CostmapView& map, const Vec2& a, const Vec2& b) const {
     const double length = std::hypot(b.x - a.x, b.y - a.y);
     const double step = std::max(0.01, map.resolution() * 0.5);

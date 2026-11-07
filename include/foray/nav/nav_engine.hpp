@@ -110,6 +110,9 @@ class NavEngine {
     static void clear_disc(Costmap& map, const CostmapView& source, const Vec2& center,
                            double radius);
 
+    /// 某点附近的最小净空（米）：扫半径内的小窗口，O((2r/res)^2)，够便宜。
+    double local_clearance(const CostmapView& map, const Vec2& point) const;
+
     /// 从 `a` 到 `b` 这一段（按格子采样）是否没有致死/未知格。
     bool segment_clear(const CostmapView& map, const Vec2& a, const Vec2& b) const;
 

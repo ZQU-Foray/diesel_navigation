@@ -84,8 +84,8 @@ std::vector<float> make_clearance(const foray::nav::CostmapView& map) {
 
 float clearance_at(const foray::nav::CostmapView& map, const std::vector<float>& field,
                    const foray::nav::Vec2& p) {
-    const int x = static_cast<int>(std::floor((p.x - 0.0) / map.resolution()));
-    const int y = static_cast<int>(std::floor((p.y - 0.0) / map.resolution()));
+    const int x = static_cast<int>(std::floor((p.x - map.origin().x) / map.resolution()));
+    const int y = static_cast<int>(std::floor((p.y - map.origin().y) / map.resolution()));
     if (x < 0 || y < 0 || x >= map.width() || y >= map.height()) {
         return 0.0f;
     }
