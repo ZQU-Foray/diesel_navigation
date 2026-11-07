@@ -12,6 +12,7 @@ add_library(foray_navigation
   src/costmap.cpp
   src/astar_planner.cpp
   src/pursuit_controller.cpp
+  src/nav_engine.cpp
 )
 add_library(Foray::Navigation ALIAS foray_navigation)
 
@@ -57,6 +58,20 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(pursuit_controller_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME pursuit_controller_test COMMAND pursuit_controller_test)
+
+add_executable(nav_engine_test test/nav_engine_test.cpp)
+target_link_libraries(nav_engine_test PRIVATE foray_navigation)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(nav_engine_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME nav_engine_test COMMAND nav_engine_test)
+
+# ---- 演示程序（不依赖 ROS）：把规划与跟踪串起来跑一遍 ----
+add_executable(nav_demo apps/nav_demo.cpp)
+target_link_libraries(nav_demo PRIVATE foray_navigation)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(nav_demo PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
 
 add_executable(types_test test/types_test.cpp)
 target_link_libraries(types_test PRIVATE foray_navigation)
