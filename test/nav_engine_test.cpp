@@ -14,6 +14,7 @@
 
 // 导航引擎测试：能不能真的走到终点、失败要带原因、偏离要重规划、停滞要重规划。
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -183,6 +184,66 @@ void test_hold_after_reached() {
     check(engine.status() == foray::nav::NavStatus::kReached, "hold: status stays reached");
 }
 
+/// 过窄口：全程不许压到致死格，且最近距离要够（防切角撞墙）。
+void test_gap_passage_keeps_clearance() {
+    foray::nav::Costmap map;
+    std::string error;
+    check(map.init(kW, kH, kRes, foray::nav::Vec2{0.0, 0.0}, &error), "gap: init");
+    for (int iy = 0; iy < kH; ++iy) {
+        for (int ix = 0; ix < kW; ++ix) {
+            map.set_cost(ix, iy, foray::nav::kCostFree);
+        }
+    }
+    // 竖墙 x∈[1.9,2.1]，y<1.6 是墙，上面留 1.4 m 的口
+    for (int iy = 0; iy < kH; ++iy) {
+        for (int ix = 0; ix < kW; ++ix) {
+            const double x = 0.025 + 0.05 * ix;
+            const double y = 0.025 + 0.05 * iy;
+            if (x >= 1.9 && x <= 2.1 && y < 1.6) {
+                map.set_cost(ix, iy, foray::nav::kCostLethal);
+            }
+        }
+    }
+
+    foray::nav::NavEngine engine;
+    foray::nav::NavGoal goal;
+    goal.pose = foray::nav::Pose2{3.4, 1.0, 0.0};
+    check(engine.set_goal(map, goal, foray::nav::Pose2{0.5, 0.5, 0.0}) ==
+              foray::nav::NavError::kNone,
+          "gap: plan ok");
+
+    foray::nav::Pose2 pose{0.5, 0.5, 0.0};
+    int hits = 0;
+    double min_clear = 1e9;
+    for (int step = 0; step < 4000; ++step) {
+        foray::nav::VelocityCommand command{};
+        engine.step(map, pose, kDt, &command);
+        pose.x += command.vx * kDt;
+        pose.y += command.vy * kDt;
+        pose.yaw += command.omega * kDt;
+        const int ix = static_cast<int>(std::floor(pose.x / kRes));
+        const int iy = static_cast<int>(std::floor(pose.y / kRes));
+        if (map.cost_at(ix, iy) == foray::nav::kCostLethal) {
+            ++hits;
+        }
+        for (int dy = -8; dy <= 8; ++dy) {
+            for (int dx = -8; dx <= 8; ++dx) {
+                if (map.cost_at(ix + dx, iy + dy) == foray::nav::kCostLethal) {
+                    const double cx = 0.025 + kRes * (ix + dx);
+                    const double cy = 0.025 + kRes * (iy + dy);
+                    min_clear = std::min(min_clear, std::hypot(pose.x - cx, pose.y - cy));
+                }
+            }
+        }
+        if (engine.status() == foray::nav::NavStatus::kReached) {
+            break;
+        }
+    }
+    check(engine.status() == foray::nav::NavStatus::kReached, "gap: reaches through the gap");
+    check(hits == 0, "gap: never steps onto a lethal cell");
+    check(min_clear >= 0.18, "gap: keeps at least 0.18 m clearance");
+}
+
 } // namespace
 
 int main() {
@@ -191,6 +252,7 @@ int main() {
     test_deviation_triggers_replan();
     test_step_without_goal();
     test_hold_after_reached();
+    test_gap_passage_keeps_clearance();
 
     if (g_failures == 0) {
         std::printf("ALL TESTS PASSED\n");

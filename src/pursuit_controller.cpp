@@ -117,6 +117,10 @@ double estimate_curvature(const Path& path, const Vec2& from, double forward_dis
 
 } // namespace
 
+void PursuitController::set_lookahead_scale(double scale) {
+    lookahead_scale_ = clamp(scale, 0.2, 1.0);
+}
+
 void PursuitController::reset() {
     last_command_ = VelocityCommand{};
     last_scale_ = 1.0;
@@ -179,8 +183,9 @@ NavError PursuitController::compute(const Pose2& pose, const Path& path, double 
     const double speed_now = std::hypot(last_command_.vx, last_command_.vy);
     double lookahead =
         clamp(speed_now * params_.lookahead_time, params_.lookahead_min, params_.lookahead_max);
+    lookahead *= lookahead_scale_;
     if (!has_last_) {
-        lookahead = params_.lookahead_min;
+        lookahead = params_.lookahead_min * lookahead_scale_;
     }
     const Vec2 target = lookahead_point(path, current, lookahead);
 

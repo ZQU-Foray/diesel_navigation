@@ -37,7 +37,8 @@ constexpr double kDt = 0.05;    // 20 Hz
 constexpr int kMaxSteps = 4000; // 200 s 上限
 constexpr int kPrintEvery = 40; // 每 2 s 打一行
 
-/// 造一张 4 m × 3 m、0.05 m/格 的地图：中间一堵竖墙，靠上留一个 0.5 m 的口。
+/// 造一张 4 m × 3 m、0.05 m/格 的地图：中间一堵竖墙，靠上留一个 1.4 m 的口。
+/// 口只有 0.5 m 时，车体半径 0.2 m 的车根本过不去——这是真实约束，不是 bug。
 foray::nav::Costmap make_demo_map() {
     constexpr int kW = 80;
     constexpr int kH = 60;
@@ -54,7 +55,7 @@ foray::nav::Costmap make_demo_map() {
         for (int ix = 0; ix < kW; ++ix) {
             const double x = 0.025 + 0.05 * ix;
             const double y = 0.025 + 0.05 * iy;
-            if (x >= 1.9 && x <= 2.1 && y < 2.2) {
+            if (x >= 1.9 && x <= 2.1 && y < 1.6) {
                 map.set_cost(ix, iy, foray::nav::kCostLethal);
             }
         }

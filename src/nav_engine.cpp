@@ -40,6 +40,56 @@ double normalize_angle(double a) {
 
 } // namespace
 
+void NavEngine::build_safe_map(const CostmapView& map) {
+    std::string error;
+    // 每次都从原图重建：动态障碍会变，缓存一份旧的比不做更危险。
+    if (safe_.width() != map.width() || safe_.height() != map.height() ||
+        safe_.resolution() != map.resolution()) {
+        safe_.init(map.width(), map.height(), map.resolution(), Vec2{0.0, 0.0}, &error);
+    }
+    // 清成未知，再用静态层把非未知格刷进来（set_static_layer 内部会 reset）。
+    safe_.set_static_layer(map, &error);
+    const double radius = std::max(0.0, options_.robot_radius);
+    if (radius > 0.0) {
+        // 内切半径 = 车体半径：这个距离内一律致死，规划自然走中间。
+        safe_.inflate(radius, radius * 1.2, 3.0);
+    }
+}
+
+void NavEngine::build_guard_map(const CostmapView& map) {
+    std::string error;
+    if (guard_.width() != map.width() || guard_.height() != map.height() ||
+        guard_.resolution() != map.resolution()) {
+        guard_.init(map.width(), map.height(), map.resolution(), Vec2{0.0, 0.0}, &error);
+    }
+    guard_.set_static_layer(map, &error);
+    const double radius = std::max(0.0, options_.robot_radius * 0.6);
+    if (radius > 0.0) {
+        guard_.inflate(radius, radius * 1.2, 3.0);
+    }
+}
+
+bool NavEngine::segment_clear(const CostmapView& map, const Vec2& a, const Vec2& b) const {
+    const double length = std::hypot(b.x - a.x, b.y - a.y);
+    const double step = std::max(0.01, map.resolution() * 0.5);
+    const int samples = std::max(1, static_cast<int>(std::ceil(length / step)));
+    for (int i = 0; i <= samples; ++i) {
+        const double t = static_cast<double>(i) / samples;
+        const double x = a.x + (b.x - a.x) * t;
+        const double y = a.y + (b.y - a.y) * t;
+        int ix = 0;
+        int iy = 0;
+        if (!map.world_to_grid(Vec2{x, y}, &ix, &iy)) {
+            return false;
+        }
+        const uint8_t cost = map.cost_at(ix, iy);
+        if (cost == kCostLethal || cost == kCostUnknown || cost == kCostReserved) {
+            return false;
+        }
+    }
+    return true;
+}
+
 NavEngine::NavEngine(const AstarParams& planner_params, const PursuitParams& controller_params)
     : planner_(planner_params), controller_(controller_params) {
 }
@@ -64,9 +114,10 @@ NavError NavEngine::set_goal(const CostmapView& map, const NavGoal& goal, const 
     has_baseline_ = false;
     status_ = NavStatus::kPlanning;
 
+    build_safe_map(map);
     PlanningOptions options;
     path_.clear();
-    const NavError error = planner_.plan(map, pose, goal.pose, options, &path_);
+    const NavError error = planner_.plan(safe_, pose, goal.pose, options, &path_);
     last_error_ = error;
     if (error != NavError::kNone) {
         path_.clear();
@@ -90,9 +141,28 @@ NavError NavEngine::replan(const CostmapView& map, const Pose2& pose) {
     ++replans_;
     status_ = NavStatus::kRecovering;
 
+    build_safe_map(map);
     Path fresh;
     PlanningOptions options;
-    const NavError error = planner_.plan(map, pose, goal_.pose, options, &fresh);
+    NavError error = planner_.plan(safe_, pose, goal_.pose, options, &fresh);
+    if (error != NavError::kNone) {
+        // 车已经贴近墙、落在膨胀层里时，规划器会把自己的格子当成障碍，于是"原地无法出发"。
+        // 这时把车周围一圈清成自由再试一次——车真的在那儿，它必须能开出来。
+        build_safe_map(map);
+        int cx = 0;
+        int cy = 0;
+        if (safe_.world_to_grid(Vec2{pose.x, pose.y}, &cx, &cy)) {
+            const int span =
+                static_cast<int>(std::ceil(options_.robot_radius * 1.3 / safe_.resolution()));
+            for (int dy = -span; dy <= span; ++dy) {
+                for (int dx = -span; dx <= span; ++dx) {
+                    safe_.set_cost(cx + dx, cy + dy, kCostFree);
+                }
+            }
+        }
+        fresh.clear();
+        error = planner_.plan(safe_, pose, goal_.pose, options, &fresh);
+    }
     last_error_ = error;
     if (error != NavError::kNone) {
         status_ = NavStatus::kFailed;
@@ -195,16 +265,40 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
         }
     }
 
-    // 4) 交给控制器。
-    VelocityCommand command{};
-    const NavError error = controller_.compute(pose, path_, dt, &command);
-    last_error_ = error;
-    if (error != NavError::kNone) {
-        const NavError recovered = replan(map, pose);
-        *out = VelocityCommand{};
-        return recovered;
+    // 4) 交给控制器，但前视要"遇阻缩短"：对着远处的点硬走会切角撞墙。
+    //    依次试 1.0 / 0.65 / 0.4 / 0.2 倍前视，取第一个前方安全的结果。
+    build_guard_map(map);
+    const double scales[4] = {1.0, 0.65, 0.4, 0.2};
+    VelocityCommand chosen{};
+    bool safe_found = false;
+    for (double scale : scales) {
+        controller_.set_lookahead_scale(scale);
+        VelocityCommand candidate{};
+        const NavError err = controller_.compute(pose, path_, dt, &candidate);
+        if (err != NavError::kNone) {
+            continue;
+        }
+        const Vec2 here{pose.x, pose.y};
+        const Vec2 ahead{pose.x + candidate.vx * options_.preview_time_s,
+                         pose.y + candidate.vy * options_.preview_time_s};
+        if (segment_clear(guard_, here, ahead)) {
+            chosen = candidate;
+            safe_found = true;
+            break;
+        }
     }
-    *out = command;
+    controller_.set_lookahead_scale(1.0);
+
+    if (!safe_found) {
+        // 缩到最小前视也撞：这一帧停住，重规划交给停滞判定（别在这里把次数烧光）。
+        controller_.reset();
+        last_error_ = NavError::kProgressStalled;
+        *out = VelocityCommand{};
+        return NavError::kNone;
+    }
+
+    last_error_ = NavError::kNone;
+    *out = chosen;
     return NavError::kNone;
 }
 

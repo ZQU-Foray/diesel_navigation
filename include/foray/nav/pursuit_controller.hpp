@@ -26,7 +26,7 @@ namespace nav {
 /// （见 docs/nav_architecture.md §11）。
 struct PursuitParams {
     /// 前视距离（米）：速度自适应时为上限，固定时为定值。
-    double lookahead_min{0.5};
+    double lookahead_min{0.35};
     double lookahead_max{2.0};
     /// 速度缩放的前视时间（秒）：前视 = clamp(v * t, min, max)。
     double lookahead_time{1.0};
@@ -90,6 +90,10 @@ class PursuitController : public LocalController {
         return params_;
     }
 
+    /// 运行时缩短前视距离的比例（0.2~1.0）。
+    /// 用途：前方被挡时先缩短前视，让车"贴着拐角"走小弧线，而不是对着远处的点硬切角。
+    void set_lookahead_scale(double scale);
+
     /// 最近一次输出的速度缩放因子（0..1，可观测用）。
     double last_scale() const {
         return last_scale_;
@@ -97,6 +101,7 @@ class PursuitController : public LocalController {
 
   private:
     PursuitParams params_{};
+    double lookahead_scale_{1.0};
     VelocityCommand last_command_{};
     double last_scale_{1.0};
     bool has_last_{false};
