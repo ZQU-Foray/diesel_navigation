@@ -54,7 +54,9 @@ void NavEngine::build_safe_map(const CostmapView& map) {
     const double radius = std::max(0.0, options_.robot_radius);
     if (radius > 0.0) {
         // 内切半径 = 车体半径：这个距离内一律致死，规划自然走中间。
-        safe_.inflate(radius, radius * 1.2, 3.0);
+        // 外半径 = radius * span：越大，规划器越愿意离墙远一点（见 Options::inflation_span）。
+        const double span = std::max(1.0, options_.inflation_span);
+        safe_.inflate(radius, radius * span, 3.0);
     }
     // 隧道这类「窄但确实能过」的通道：膨胀会把口子糊死，所以膨胀之后要刷回来。
     apply_preferred_regions(safe_, map, preferred_regions_);

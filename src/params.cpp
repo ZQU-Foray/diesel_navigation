@@ -141,6 +141,9 @@ bool apply_key(const std::string& key, const std::string& value, NavParams& p, c
     if (key == "engine.guard_floor_ratio") {
         return read_number(key, value, &p.engine.guard_floor_ratio, parse_double, ctx);
     }
+    if (key == "engine.inflation_span") {
+        return read_number(key, value, &p.engine.inflation_span, parse_double, ctx);
+    }
 
     if (key == "astar.cost_weight") {
         return read_number(key, value, &p.astar.cost_weight, parse_double, ctx);
@@ -250,6 +253,9 @@ bool validate_params(const NavParams& params, std::string* error) {
     }
     if (params.engine.guard_floor_ratio > params.engine.guard_ratio_max) {
         return bad("engine.guard_floor_ratio 不能大于 guard_ratio_max（否则上限不起作用）");
+    }
+    if (!(params.engine.inflation_span >= 1.0)) {
+        return bad("engine.inflation_span 必须 ≥ 1（外半径不能小于内切半径）");
     }
 
     if (!(params.astar.cost_weight > 0.0)) {
