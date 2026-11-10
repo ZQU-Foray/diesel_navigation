@@ -43,11 +43,13 @@ struct Rgb {
 };
 
 void usage() {
-    std::printf("usage: nav_plot --yaml MAP.yaml --csv TRACE.csv [--out OUT.ppm] [--scale N]\n"
-                "  MAP.yaml  地图元数据（PGM 同目录参照）\n"
-                "  TRACE.csv nav_trace --csv 导出的逐帧记录\n"
-                "  OUT.ppm   输出文件名，默认 trace.ppm\n"
-                "  --scale   放大倍数，默认 1\n");
+    std::printf(
+        "usage: nav_plot --yaml MAP.yaml --csv TRACE.csv [--csv TRACE2.csv ...] [--out OUT.ppm] "
+        "[--scale N]\n"
+        "  MAP.yaml  地图元数据（PGM 同目录参照）\n"
+        "  TRACE.csv nav_trace --csv 导出的逐帧记录；可给多个，多条轨迹叠在一张图上（按顺序配色）\n"
+        "  OUT.ppm   输出文件名，默认 trace.ppm\n"
+        "  --scale   放大倍数，默认 1\n");
 }
 
 /// 代价 → 颜色。低代价（偏好）偏蓝，高代价（膨胀 → 致死）越来越深。
@@ -135,69 +137,42 @@ void draw_marker(std::vector<Rgb>& image, int w, int h, int cx, int cy, const Rg
     }
 }
 
+/// 终点画方框（空心）：多轨迹叠在一起时，空心比实心更容易分出「到没到」。
+void draw_goal_box(std::vector<Rgb>& image, int w, int h, int cx, int cy, const Rgb& c, int scale) {
+    for (int d = -3; d <= 3; ++d) {
+        put(image, w, h, cx + d, cy - 3, c, scale);
+        put(image, w, h, cx + d, cy + 3, c, scale);
+        put(image, w, h, cx - 3, cy + d, c, scale);
+        put(image, w, h, cx + 3, cy + d, c, scale);
+    }
+}
+
 struct Sample {
     double x{0.0};
     double y{0.0};
     double speed{0.0};
 };
 
-} // namespace
-
-int main(int argc, char** argv) {
-    std::string map_yaml;
-    std::string csv_path;
-    std::string out_path = "trace.ppm";
-    int scale = 1;
-
-    for (int i = 1; i < argc; ++i) {
-        const std::string arg = argv[i];
-        const bool has = (i + 1 < argc);
-        if (arg == "--help" || arg == "-h") {
-            usage();
-            return 0;
-        } else if (arg == "--yaml" && has) {
-            map_yaml = argv[++i];
-        } else if (arg == "--csv" && has) {
-            csv_path = argv[++i];
-        } else if (arg == "--out" && has) {
-            out_path = argv[++i];
-        } else if (arg == "--scale" && has) {
-            scale = std::atoi(argv[++i]);
-        } else {
-            usage();
-            return 2;
-        }
-    }
-    if (map_yaml.empty() || csv_path.empty()) {
-        usage();
-        return 2;
-    }
-    if (scale < 1) {
-        scale = 1;
-    }
-
-    foray::nav::GridMap map;
-    std::string error;
-    if (!map.load_from_yaml(map_yaml, &error)) {
-        std::printf("地图加载失败: %s\n", error.c_str());
-        return 1;
-    }
-
-    std::FILE* csv = std::fopen(csv_path.c_str(), "r");
+/// 读一份 nav_trace 导出的 CSV。空文件、读不到都算失败并写 `error`。
+bool load_trace_csv(const std::string& path, std::vector<Sample>* out, std::string* error) {
+    std::FILE* csv = std::fopen(path.c_str(), "r");
     if (csv == nullptr) {
-        std::printf("读不到轨迹文件: %s\n", csv_path.c_str());
-        return 1;
+        if (error != nullptr) {
+            *error = "读不到轨迹文件：" + path;
+        }
+        return false;
     }
-
-    std::vector<Sample> samples;
     char line[512];
     // 跳过表头。顺便挡住「空文件」——fgets 的返回值是「有没有下一行」的唯一来源，
     // 丢掉它就成了「空文件静默出白图」（Ubuntu 的 g++ 会直接把这条当错误）。
     if (std::fgets(line, sizeof(line), csv) == nullptr) {
         std::fclose(csv);
-        std::printf("轨迹文件是空的: %s\n", csv_path.c_str());
-        return 1;
+        if (error != nullptr) {
+            *error = "轨迹文件是空的：" + path;
+        }
+        return false;
     }
+    out->clear();
     while (std::fgets(line, sizeof(line), csv) != nullptr) {
         double t = 0.0;
         double x = 0.0;
@@ -212,12 +187,58 @@ int main(int argc, char** argv) {
         if (n < 5) {
             continue;
         }
-        samples.push_back(Sample{x, y, std::hypot(vx, vy)});
+        out->push_back(Sample{x, y, std::hypot(vx, vy)});
     }
     std::fclose(csv);
+    if (out->empty()) {
+        if (error != nullptr) {
+            *error = "轨迹文件里没有数据点：" + path;
+        }
+        return false;
+    }
+    return true;
+}
 
-    if (samples.empty()) {
-        std::printf("轨迹文件里没有数据点: %s\n", csv_path.c_str());
+} // namespace
+
+int main(int argc, char** argv) {
+    std::string map_yaml;
+    std::vector<std::string> csv_paths;
+    std::string out_path = "trace.ppm";
+    int scale = 1;
+
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        const bool has = (i + 1 < argc);
+        if (arg == "--help" || arg == "-h") {
+            usage();
+            return 0;
+        } else if (arg == "--yaml" && has) {
+            map_yaml = argv[++i];
+        } else if (arg == "--csv" && has) {
+            // 可以给多个：多条轨迹叠在同一张图上（按顺序配色）。
+            csv_paths.push_back(argv[++i]);
+        } else if (arg == "--out" && has) {
+            out_path = argv[++i];
+        } else if (arg == "--scale" && has) {
+            scale = std::atoi(argv[++i]);
+        } else {
+            usage();
+            return 2;
+        }
+    }
+    if (map_yaml.empty() || csv_paths.empty()) {
+        usage();
+        return 2;
+    }
+    if (scale < 1) {
+        scale = 1;
+    }
+
+    foray::nav::GridMap map;
+    std::string error;
+    if (!map.load_from_yaml(map_yaml, &error)) {
+        std::printf("地图加载失败: %s\n", error.c_str());
         return 1;
     }
 
@@ -236,35 +257,59 @@ int main(int argc, char** argv) {
         }
     }
 
-    double max_speed = 0.0;
-    for (const Sample& s : samples) {
-        max_speed = std::max(max_speed, s.speed);
-    }
-
     auto to_cell = [&](double wx, double wy, int* cx, int* cy) {
         *cx = static_cast<int>(std::floor((wx - origin.x) / res));
         *cy = static_cast<int>(std::floor((wy - origin.y) / res));
     };
 
-    for (size_t i = 1; i < samples.size(); ++i) {
-        int x0 = 0;
-        int y0 = 0;
-        int x1 = 0;
-        int y1 = 0;
-        to_cell(samples[i - 1].x, samples[i - 1].y, &x0, &y0);
-        to_cell(samples[i].x, samples[i].y, &x1, &y1);
-        const Rgb color = color_of_speed(samples[i].speed, max_speed);
-        draw_line(image, img_w, img_h, x0, cell_h - 1 - y0, x1, cell_h - 1 - y1, color, scale);
+    // 多条轨迹时按顺序配色（一眼分清谁是谁）；单条时仍按速度染色。
+    const Rgb kPalette[10] = {{220, 60, 60},  {40, 110, 220}, {30, 160, 90},  {200, 120, 20},
+                              {150, 60, 200}, {0, 160, 170},  {220, 80, 160}, {110, 110, 110},
+                              {120, 150, 30}, {60, 60, 160}};
+    const bool many = csv_paths.size() > 1;
+
+    size_t total_frames = 0;
+    int drawn = 0;
+    for (size_t k = 0; k < csv_paths.size(); ++k) {
+        std::vector<Sample> samples;
+        std::string read_error;
+        if (!load_trace_csv(csv_paths[k], &samples, &read_error)) {
+            std::printf("跳过 %s：%s\n", csv_paths[k].c_str(), read_error.c_str());
+            continue;
+        }
+        const Rgb trace_color = many ? kPalette[k % 10] : Rgb{80, 90, 230};
+        double max_speed = 0.0;
+        for (const Sample& s : samples) {
+            max_speed = std::max(max_speed, s.speed);
+        }
+        for (size_t i = 1; i < samples.size(); ++i) {
+            int x0 = 0;
+            int y0 = 0;
+            int x1 = 0;
+            int y1 = 0;
+            to_cell(samples[i - 1].x, samples[i - 1].y, &x0, &y0);
+            to_cell(samples[i].x, samples[i].y, &x1, &y1);
+            const Rgb color = many ? trace_color : color_of_speed(samples[i].speed, max_speed);
+            draw_line(image, img_w, img_h, x0, cell_h - 1 - y0, x1, cell_h - 1 - y1, color, scale);
+        }
+        int sx = 0;
+        int sy = 0;
+        int gx = 0;
+        int gy = 0;
+        to_cell(samples.front().x, samples.front().y, &sx, &sy);
+        to_cell(samples.back().x, samples.back().y, &gx, &gy);
+        // 起点画实心小点、终点画方框：多轨迹重叠时也能分清哪个是起点、哪个是终点。
+        draw_marker(image, img_w, img_h, sx, cell_h - 1 - sy, many ? trace_color : Rgb{0, 190, 60},
+                    scale);
+        draw_goal_box(image, img_w, img_h, gx, cell_h - 1 - gy, Rgb{20, 20, 20}, scale);
+        total_frames += samples.size();
+        ++drawn;
     }
 
-    int sx = 0;
-    int sy = 0;
-    int gx = 0;
-    int gy = 0;
-    to_cell(samples.front().x, samples.front().y, &sx, &sy);
-    to_cell(samples.back().x, samples.back().y, &gx, &gy);
-    draw_marker(image, img_w, img_h, sx, cell_h - 1 - sy, Rgb{0, 190, 60}, scale);
-    draw_marker(image, img_w, img_h, gx, cell_h - 1 - gy, Rgb{230, 40, 60}, scale);
+    if (drawn == 0) {
+        std::printf("没有可画的轨迹（都读失败了）\n");
+        return 1;
+    }
 
     std::FILE* out = std::fopen(out_path.c_str(), "wb");
     if (out == nullptr) {
@@ -275,7 +320,7 @@ int main(int argc, char** argv) {
     std::fwrite(image.data(), sizeof(Rgb), image.size(), out);
     std::fclose(out);
 
-    std::printf("已出图: %s（%d x %d，%zu 帧，最快 %.2f m/s）\n", out_path.c_str(), img_w, img_h,
-                samples.size(), max_speed);
+    std::printf("已出图: %s（%d x %d，%d 条轨迹，共 %zu 帧）\n", out_path.c_str(), img_w, img_h,
+                drawn, total_frames);
     return 0;
 }

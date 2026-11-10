@@ -28,7 +28,7 @@
 | `include/foray/nav/regions.hpp` + `src/regions.cpp` | **区域表**：把「图上画成墙、但人能过」的隧道补回代价图（`tunnel` 可覆盖墙，`preferred` 不行） | `regions_test` |
 | `apps/nav_demo.cpp` | 4 m × 3 m 人造带墙图上跑通「规划→跟踪→到达」；也可读真实 PGM | — |
 | `apps/nav_trace.cpp` | 逐帧诊断：位姿/指令/净空/状态，可导 CSV、可只看卡住段 | — |
-| `apps/nav_plot.cpp` | 把 `nav_trace` 的 CSV 画到地图上，输出 PPM：速度染色 + 起终点标记 | — |
+| `apps/nav_plot.cpp` | 把 `nav_trace` 的 CSV 画到地图上，输出 PPM：单条按速度染色，多条按顺序配色（`--csv` 可给多次） | — |
 | `maps/rmul_2027/` | 2027 3V3 场地图（512 × 352、0.025 m/格） | — |
 
 **未实现（后续）**：
