@@ -378,9 +378,12 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
     //    依次试 1.0 / 0.65 / 0.4 / 0.2 倍前视，取第一个前方安全的结果。
     // 护栏半径自适应：车已经贴得比护栏还近时，护栏按实际净空退一步——
     // 否则"我脚下就是禁区"，任何动作都判死，车原地罚站（2026-11-07 实测起点 0.12 m）。
+    // 上下限都可由参数给：下限压得太低会把车放进"实车会蹭墙"的缝里（2026-11-10 实测横穿全图时
+    // 最小净空只有 0.11 m，而车体半径是 0.25 m），所以这个值是要拿来权衡的，不该写死。
     const double here_clear = local_clearance(map, Vec2{pose.x, pose.y});
-    const double guard_radius = std::min(options_.robot_radius * 0.6,
-                                         std::max(options_.robot_radius * 0.4, here_clear * 0.8));
+    const double guard_radius =
+        std::min(options_.robot_radius * options_.guard_ratio_max,
+                 std::max(options_.robot_radius * options_.guard_floor_ratio, here_clear * 0.8));
     build_guard_map(map, guard_radius);
     const double scales[4] = {1.0, 0.65, 0.4, 0.2};
     VelocityCommand chosen{};

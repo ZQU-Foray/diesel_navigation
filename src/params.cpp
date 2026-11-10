@@ -135,6 +135,12 @@ bool apply_key(const std::string& key, const std::string& value, NavParams& p, c
     if (key == "engine.heading_tolerance") {
         return read_number(key, value, &p.engine.heading_tolerance, parse_double, ctx);
     }
+    if (key == "engine.guard_ratio_max") {
+        return read_number(key, value, &p.engine.guard_ratio_max, parse_double, ctx);
+    }
+    if (key == "engine.guard_floor_ratio") {
+        return read_number(key, value, &p.engine.guard_floor_ratio, parse_double, ctx);
+    }
 
     if (key == "astar.cost_weight") {
         return read_number(key, value, &p.astar.cost_weight, parse_double, ctx);
@@ -235,6 +241,15 @@ bool validate_params(const NavParams& params, std::string* error) {
     }
     if (!(params.engine.heading_tolerance > 0.0)) {
         return bad("engine.heading_tolerance 必须为正");
+    }
+    if (!(params.engine.guard_ratio_max > 0.0 && params.engine.guard_ratio_max <= 1.0)) {
+        return bad("engine.guard_ratio_max 必须落在 (0, 1]（是车体半径的倍数）");
+    }
+    if (!(params.engine.guard_floor_ratio > 0.0)) {
+        return bad("engine.guard_floor_ratio 必须为正");
+    }
+    if (params.engine.guard_floor_ratio > params.engine.guard_ratio_max) {
+        return bad("engine.guard_floor_ratio 不能大于 guard_ratio_max（否则上限不起作用）");
     }
 
     if (!(params.astar.cost_weight > 0.0)) {
