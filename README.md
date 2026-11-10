@@ -24,6 +24,7 @@
 | `src/astar_planner.cpp` | A\*（8 邻接、禁斜穿犄角、视线捷径化、偏好代价） | `astar_planner_test` |
 | `src/pursuit_controller.cpp` | 纯追踪（全向、曲率与到点降速、幅值与变化率限幅） | `pursuit_controller_test` |
 | `src/nav_engine.cpp` | **主循环**：规划 → 跟踪 → 判到达 → 偏离/停滞重规划；安全层与护栏层两级膨胀、起终点兜底、安全自检 | `nav_engine_test` |
+| `include/foray/nav/params.hpp` + `src/params.cpp` | **参数出代码**：扁平 YAML 两级覆盖（`shared` → `<robot>`），未知键与越界值直接报错 | `params_test` |
 | `apps/nav_demo.cpp` | 4 m × 3 m 人造带墙图上跑通「规划→跟踪→到达」；也可读真实 PGM | — |
 | `apps/nav_trace.cpp` | 逐帧诊断：位姿/指令/净空/状态，可导 CSV、可只看卡住段 | — |
 | `maps/rmul_2027/` | 2027 3V3 场地图（512 × 352、0.025 m/格） | — |
@@ -35,7 +36,7 @@
 - **ROS 适配层**：本仓对外仍是 C++ 库，没有节点/话题/参数；
 - **上游接线**：`foray_localization` 的位姿、`foray_vision` 的动态障碍、`foray_robots` 的装配根；
 - **地图语义层与区域表**（坡道 / 高地 / 台阶边沿 / 补给区）尚未标注；
-- **参数分级**（`shared.yaml` + `<robot>.yaml`）与 fork 基线清理。
+- **fork 基线清理**（删 `terrain_analysis`、接 `foray_localization` / `foray_vision` / `foray_robots`）。
 
 ### 2026-11-07 引擎落地（NavEngine + 真图压测）
 
@@ -92,6 +93,21 @@ ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
 ```
 
 > `<build>` 指上面 `cmake --build` 用的那个构建目录，例如 `~/.cache/foray-navigation-build`。
+
+### 参数
+
+参数**不再写死在代码里**（2026-11-10 起）：先读 `config/shared.yaml`（本仓通用），再叠加
+`config/<robot>.yaml`（车种 / 赛季覆盖，只写不一样的那几条）。
+
+```bash
+<build>/nav_demo  --params config/shared.yaml --robot config/rmul_2027.yaml
+<build>/nav_trace --yaml maps/rmul_2027/rmul_2027.yaml --sx 1.9 --sy 5.1 --gx 6.6 --gy 0.5 \
+                  --params config/shared.yaml --robot config/rmul_2027.yaml
+```
+
+- 格式刻意保持**扁平**（`key: value`，`#` 起注释），不依赖第三方 YAML 库；
+- **键名写错、数值不合法都会报错并指到「文件:行」**——静默忽略的代价是「调了半天，发现改的是另一个名字」；
+- 每个键的默认值与来历（哪些是**待实测**的借用值）都写在 `config/shared.yaml` 的注释里。
 
 ## 依赖
 

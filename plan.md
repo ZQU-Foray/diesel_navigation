@@ -21,7 +21,8 @@
 ### 原基线清理（承接 fork 分支）
 
 - [ ] 清理 fork：删除 terrain_analysis 等已定删除项
-- [ ] 把导航参数抽出为 `shared.yaml` + `<robot>.yaml` 两级
+- [x] 把导航参数抽出为 `shared.yaml` + `<robot>.yaml` 两级（2026-11-10：
+      `config/shared.yaml` + `config/rmul_2027.yaml`，`params` 模块 + `params_test`，两个工具都能 `--params/--robot`）
 - [ ] 接 `foray_localization` 的位姿与地图（替代当前直连）
 - [ ] 接 `foray_vision` 的动态障碍（替代自建障碍源）
 - [ ] 拆出 `foray_robots` 装配根，本仓只留算法
