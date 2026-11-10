@@ -192,7 +192,13 @@ int main(int argc, char** argv) {
 
     std::vector<Sample> samples;
     char line[512];
-    (void)std::fgets(line, sizeof(line), csv); // 跳过表头
+    // 跳过表头。顺便挡住「空文件」——fgets 的返回值是「有没有下一行」的唯一来源，
+    // 丢掉它就成了「空文件静默出白图」（Ubuntu 的 g++ 会直接把这条当错误）。
+    if (std::fgets(line, sizeof(line), csv) == nullptr) {
+        std::fclose(csv);
+        std::printf("轨迹文件是空的: %s\n", csv_path.c_str());
+        return 1;
+    }
     while (std::fgets(line, sizeof(line), csv) != nullptr) {
         double t = 0.0;
         double x = 0.0;
