@@ -10,9 +10,13 @@
 - [x] **M2 代价图**：静态层 + 禁行层（多边形）+ 膨胀层（倒角距离变换，半径由 `min_passable_width` 推出）+ 动态层占格
 - [x] **M3 全局寻路**：A\*（8 邻接、禁斜穿犄角）+ 视线捷径化 + 失败原因分类；支持**偏好代价**（隧道优先）
 - [x] **M4 局部控制**：纯追踪（全向）+ 曲率降速 + 到点降速 + 幅值/变化率限幅
-- [x] **评审跟进（2026-11-02）**：① `UnitKind` 兵种接口预留（哨兵 / 步兵 / 重装，本期只用哨兵）② 补 `.clang-format` 并重排全部源码，修 `lint-c`
-- [ ] **M5 恢复与状态机**：清图 → 旋转 → 后退 → 重规划 → 上报（**后续实现，不属于框架阶段**）
-- [ ] **M6 端到端**：2027 3V3 地图上跑通「补给区 → 中央控制区」，路径可视化（**后续实现**）
+- [x] **M4.5 引擎（2026-11-07）**：`NavEngine` 把「规划 → 跟踪 → 判到达 → 偏离/停滞重规划」串成主循环；
+  安全层 / 护栏层两级膨胀、起终点兜底、安全自检；`nav_demo`、`nav_trace` 两个工具；
+  2027 真图资产 `maps/rmul_2027/`；压测 105 组随机 + 94 组贴墙起始，全部到达、0 帧压致死格
+- [ ] **M5 恢复与状态机**：清图 → 旋转 → 后退 → 重规划 → 上报。
+  **部分已内建**：偏离/停滞重规划、「先退再跟」都在 `NavEngine` 里；**独立的恢复状态机尚未做**
+- [ ] **M6 端到端**：2027 3V3 地图上跑通「补给区 → 中央控制区」、路径可视化。
+  **离线压测已做**（随机起终点全到达、前后对比图见 `docs/figures/`），但**任务级端到端与可视化未做**
 
 ### 原基线清理（承接 fork 分支）
 
@@ -24,14 +28,17 @@
 
 ## 当前 Agent State
 
-NAV_FRAMEWORK_DONE（框架到此为止：接口 / 地图 / 代价图 / A\* / 隧道偏好 / 控制，五组测试全绿；M5 恢复、M6 端到端属后续实现，不在框架阶段做）
+`NAV_ENGINE_DONE` —— 框架 + 引擎都落地了：接口 / 地图 / 代价图 / A\* / 隧道偏好 / 控制 / 主循环，
+六组测试全绿，2027 真图压测全到达。M5 的独立恢复状态机、M6 的任务级端到端、ROS 适配与上游接线仍属后续实现。
+
+> 2026-11-10：文档与代码对齐（README / plan / tree / decision），代码未改。
 
 ## Before Snapshot
 
-commit hash:   （本次提交）
+commit hash:   （本次提交；引擎侧见 `c323eb1`）
 branch:        feat/nav-skeleton
-modified files: 新增 `include/foray/nav/*.hpp`、`CMakeLists.txt`、`package.xml`；`tree.md`、`plan.md` 同步
-risk level:    L1（纯文档，无代码）
+modified files: 2026-11-10 仅文档（`README.md`、`plan.md`、`tree.md`、`decision.md`）
+risk level:    L1（纯文档，无代码改动）
 
 ## 模糊点与待确认项
 
@@ -40,8 +47,9 @@ risk level:    L1（纯文档，无代码）
   仍需队里定：**三台车抢同一条走廊**时如何赛前分工（YAML 写死）
 - **隧道净宽 / 净高、高地坡道坡度、工作台高度**尚未查到，在 `机器人制作规范手册` 里，
   补齐前 M2 的膨胀半径只能按估计值
-- **车体尺寸与标定参数未定**（车宽、最大速度、最大爬坡角），所有借来的默认值标「待实测」
-- 地图资产（PGM + 区域表）尚无产出，M1 用的第一张图需先建
+- **车体尺寸与标定参数未定**（车宽、最大速度、最大爬坡角），所有借来的默认值标「待实测」。
+  当前 `robot_radius` 取 0.25 m（对齐开源配置），**待实测复核**
+- 地图资产已有场地栅格图（`maps/rmul_2027/`），但**区域表与语义层（坡道 / 高地 / 台阶边沿 / 补给区）尚未标注**
 - 本仓接口尚未冻结，任务清单为**方向性**的，落地顺序以 `foray_docs/algorithm_structure.md` §9 演进阶段为准
 - 依赖的自研仓尚未建齐，跨仓任务需等对方 `README.md` 明确接口后再启动
 
@@ -56,7 +64,9 @@ Commit: （首次提交）
 
 ## Acceptance Criteria
 
-- [ ] 本仓能独立 `colcon build`（无代码时跳过）——**待验**：本地没有 ROS 2 环境，
-      CI 里的 `build-ros2` 作业在无 `package.xml` 时会跳过，跳过也算"成功"，所以不能拿绿灯当证据
-- [x] CI 绿灯（2026-11-02：PR #1「All checks have passed」，4 个检查）
-- [x] 每个新增模块带独立可执行测试（`grid_map_test` / `costmap_test` / `astar_planner_test` / `pursuit_controller_test` / `types_test`）
+- [x] 本仓能独立 `colcon build`——2026-11-07 CI 的 `build-ros2` 作业里，
+      `colcon build` / `colcon test` 都是真跑过（不是 skipped），四个检查全绿
+- [x] CI 绿灯（2026-11-02：「All checks have passed」，4 个检查）
+- [x] 每个新增模块带独立可执行测试（`grid_map_test` / `costmap_test` / `astar_planner_test` /
+      `pursuit_controller_test` / `nav_engine_test` / `types_test`）
+- [ ] PR #1 合入：**只差有人 Approve 与实机验证**（代码不再改动）
