@@ -189,7 +189,7 @@ NavError PursuitController::compute(const Pose2& pose, const Path& path, double 
 
     // 1) 前视距离：速度自适应（用上次的速度估），再夹到 [min, max]。
     //    然后按曲率缩：直道上长前视走得稳，拐角上还那么长就必然切内圈
-    //    （2026-11-10 实测：跟踪误差最大 0.241 m，切进安全边界 0.166 m）。
+    //    （2026-11-10 实测，半径按 0.25 的旧口径：跟踪误差最大 0.241 m，切进安全边界 0.166 m）。
     const double speed_now = std::hypot(last_command_.vx, last_command_.vy);
     double lookahead =
         clamp(speed_now * params_.lookahead_time, params_.lookahead_min, params_.lookahead_max);

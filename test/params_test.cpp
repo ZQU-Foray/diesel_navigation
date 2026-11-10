@@ -40,7 +40,7 @@ bool contains(const std::string& haystack, const std::string& needle) {
 void test_defaults_match_struct_defaults() {
     foray::nav::NavParams params;
 
-    check(params.engine.robot_radius == 0.25, "engine.robot_radius default 0.25");
+    check(params.engine.robot_radius == 0.32, "engine.robot_radius default 0.32 (593 mm 车体)");
     check(params.engine.max_replans == 3, "engine.max_replans default 3");
     check(params.astar.cost_weight == 3.0, "astar.cost_weight default 3.0");
     check(params.pursuit.max_linear == 2.5, "pursuit.max_linear default 2.5");
