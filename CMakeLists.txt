@@ -87,6 +87,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(nav_plot PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
+add_executable(nav_fuzz apps/nav_fuzz.cpp)
+target_link_libraries(nav_fuzz PRIVATE foray_navigation)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(nav_fuzz PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+
 add_executable(types_test test/types_test.cpp)
 target_link_libraries(types_test PRIVATE foray_navigation)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

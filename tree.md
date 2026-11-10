@@ -50,7 +50,8 @@
 ├── apps/
 │   ├── nav_demo.cpp         演示：内置地图或真实 PGM 上跑通「规划→跟踪→到达」
 │   ├── nav_trace.cpp        逐帧诊断：位姿/指令/净空/状态，可导 CSV
-│   └── nav_plot.cpp         轨迹出图：CSV + 地图 → PPM（速度染色、起终点标记）
+│   ├── nav_plot.cpp         轨迹出图：CSV + 地图 → PPM（速度染色、起终点标记）
+│   └── nav_fuzz.cpp         随机压测：固定种子撒 N 组起终点，统计到达率/压墙帧/净空
 ├── ros/
 │   └── nav_node.cpp         ROS 2 适配层（可选构建）：map + odom + goal_pose → cmd_vel
 ├── test/                    独立可执行测试（不依赖测试框架）

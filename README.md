@@ -29,6 +29,7 @@
 | `apps/nav_demo.cpp` | 4 m × 3 m 人造带墙图上跑通「规划→跟踪→到达」；也可读真实 PGM | — |
 | `apps/nav_trace.cpp` | 逐帧诊断：位姿/指令/净空/状态，可导 CSV、可只看卡住段 | — |
 | `apps/nav_plot.cpp` | 把 `nav_trace` 的 CSV 画到地图上，输出 PPM：单条按速度染色，多条按顺序配色（`--csv` 可给多次） | — |
+| `apps/nav_fuzz.cpp` | **随机压测**：固定种子撒 N 组起终点，统计到达率 / 压墙帧 / 里程 / 最小净空；PR 里的数字靠它复现 | — |
 | `ros/nav_node.cpp` | **ROS 2 适配层**（可选构建）：`map`+`odom`+`goal_pose` → `cmd_vel`；核心库仍不依赖 ROS | 见下文「ROS 2 适配层」 |
 | `maps/rmul_2027/` | 2027 3V3 场地图（512 × 352、0.025 m/格） | — |
 
@@ -95,6 +96,11 @@ ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
 
 # 把这一趟画成图：蓝=慢、红=快，绿点起点、红点终点（PPM，--scale 放大）
 <build>/nav_plot --yaml maps/rmul_2027/rmul_2027.yaml --csv trace.csv --out trace.ppm --scale 2
+
+# 随机压测（固定种子 = 可复现；退出码非 0 表示有任务没到达）
+<build>/nav_fuzz --yaml maps/rmul_2027/rmul_2027.yaml --count 100 --seed 2027 \
+                --params config/shared.yaml --robot config/rmul_2027.yaml \
+                --regions config/rmul_2027.regions.txt --csv fuzz.csv
 ```
 
 > `<build>` 指上面 `cmake --build` 用的那个构建目录，例如 `~/.cache/foray-navigation-build`。
