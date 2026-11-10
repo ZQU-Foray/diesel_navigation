@@ -35,9 +35,12 @@ from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPo
 class Smoke(Node):
     def __init__(self):
         super().__init__("nav_node_smoke")
-        qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
-                         durability=DurabilityPolicy.TRANSIENT_LOCAL,
-                         history=HistoryPolicy.KEEP_LAST)
+        qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+        )
         self.map_pub = self.create_publisher(OccupancyGrid, "map", qos)
         self.odom_pub = self.create_publisher(Odometry, "odom", 10)
         self.goal_pub = self.create_publisher(PoseStamped, "goal_pose", 1)
@@ -103,7 +106,7 @@ def main():
     deadline = time.time() + 6.0
     while time.time() < deadline:
         rclpy.spin_once(node, timeout_sec=0.1)
-    print("samples=%d max_speed=%.3f" % (node.samples, node.max_speed))
+    print(f"samples={node.samples} max_speed={node.max_speed:.3f}")
     node.destroy_node()
     rclpy.shutdown()
     ok = node.max_speed > 0.1 and node.samples > 10

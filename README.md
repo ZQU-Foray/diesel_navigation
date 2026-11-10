@@ -170,10 +170,10 @@ source /opt/ros/humble/setup.bash && colcon build
 2026-11-10 在 Ubuntu 22.04 + Humble 上验证：`colcon build` 过；喂一张 4×3 m 带墙的地图 +
 固定位姿 + 目标后，节点规划出 6 个路径点、`cmd_vel` 达到 2.5 m/s 限速（20 Hz，120 帧）。
 
-那个冒烟测试就在 `ros/smoke_test.py`（rclpy，手动跑，不进 CI）：
+那个冒烟测试就在 `ros/smoke_nav_node.py`（rclpy，手动跑，不进 CI）：
 
 ```bash
-python3 ros/smoke_test.py     # 5 秒内收到 |v| > 0.1 m/s 即 PASS
+python3 ros/smoke_nav_node.py     # 5 秒内收到 |v| > 0.1 m/s 即 PASS
 ```
 
 > **还没接的**：TF / `foray_localization` 的位姿（现在直接吃 `odom`）、`foray_vision` 的动态障碍、
