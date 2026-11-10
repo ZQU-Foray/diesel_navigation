@@ -53,7 +53,8 @@
 │   ├── nav_plot.cpp         轨迹出图：CSV + 地图 → PPM（速度染色、起终点标记）
 │   └── nav_fuzz.cpp         随机压测：固定种子撒 N 组起终点，统计到达率/压墙帧/净空
 ├── ros/
-│   └── nav_node.cpp         ROS 2 适配层（可选构建）：map + odom + goal_pose → cmd_vel
+│   ├── nav_node.cpp         ROS 2 适配层（可选构建）：map + odom + goal_pose → cmd_vel
+│   └── smoke_test.py        手动集成冒烟（rclpy；发地图+位姿+目标，看 cmd_vel 是否非零）
 ├── test/                    独立可执行测试（不依赖测试框架）
 │   ├── grid_map_test.cpp    地图读入与坐标换算
 │   ├── costmap_test.cpp     代价图分层、膨胀幂等、过期障碍、细窄禁行带
