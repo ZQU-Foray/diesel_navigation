@@ -29,15 +29,15 @@
 | `apps/nav_demo.cpp` | 4 m × 3 m 人造带墙图上跑通「规划→跟踪→到达」；也可读真实 PGM | — |
 | `apps/nav_trace.cpp` | 逐帧诊断：位姿/指令/净空/状态，可导 CSV、可只看卡住段 | — |
 | `apps/nav_plot.cpp` | 把 `nav_trace` 的 CSV 画到地图上，输出 PPM：单条按速度染色，多条按顺序配色（`--csv` 可给多次） | — |
+| `ros/nav_node.cpp` | **ROS 2 适配层**（可选构建）：`map`+`odom`+`goal_pose` → `cmd_vel`；核心库仍不依赖 ROS | 见下文「ROS 2 适配层」 |
 | `maps/rmul_2027/` | 2027 3V3 场地图（512 × 352、0.025 m/格） | — |
 
 **未实现（后续）**：
 
 - **独立恢复状态机（M5 完整形态）**——重规划与「先退再跟」已内建在 `NavEngine` 里，但没有独立的恢复行为层；
 - **端到端任务（M6）**：补给区 → 中央控制区的完整路线与可视化；
-- **ROS 适配层**：本仓对外仍是 C++ 库，没有节点/话题/参数；
-- **上游接线**：`foray_localization` 的位姿、`foray_vision` 的动态障碍、`foray_robots` 的装配根；
-- **地图语义层与区域表**（坡道 / 高地 / 台阶边沿 / 补给区）尚未标注；
+- **ROS 上游接线**：TF / `foray_localization` 的位姿（现在节点直接吃 `odom`）、`foray_vision` 的动态障碍、`foray_robots` 的装配根；
+- **地图语义层与区域表**（坡道 / 高地 / 台阶边沿 / 补给区）尚未标注（隧道已标）；
 - **fork 基线清理**（删 `terrain_analysis`、接 `foray_localization` / `foray_vision` / `foray_robots`）。
 
 ### 2026-11-07 引擎落地（NavEngine + 真图压测）
@@ -138,6 +138,34 @@ preferred ...                     # 只想「更想走」、不许覆盖墙的�
 - `tunnel` 是**人的显式决定**：允许把原图上的致死格打开（未知格永远不打开）；
 - 区域要**沿通道轴各放宽约 0.3 m**，否则隧道口仍被膨胀带封死（实测：只标柱子本身，路线一点不变）；
 - 实测效果：横穿全图同一任务，**18.10 → 14.48 m**、9.5 → 7.1 s。
+
+### ROS 2 适配层（可选）
+
+`ros/nav_node.cpp` 把 `NavEngine` 包成一个节点。**核心库仍然不依赖 ROS**：CMake 里
+`find_package(rclcpp QUIET)` 找不到就整个目标跳过，纯 CMake 构建照常可用。
+
+| 方向 | 话题 | 类型 |
+|---|---|---|
+| 订阅 | `map` | `nav_msgs/OccupancyGrid`（`transient_local`，晚启动也能拿到） |
+| 订阅 | `odom` | `nav_msgs/Odometry`（取位姿；**暂不接 TF 树**——定位模块还没接） |
+| 订阅 | `goal_pose` | `geometry_msgs/PoseStamped`（RViz 的 2D Goal Pose） |
+| 发布 | `cmd_vel` | `geometry_msgs/Twist`（`vx`/`vy`/`omega`） |
+
+参数：`params_file`、`robot_file`、`regions_file`、`control_rate`（默认 20 Hz）。
+
+```bash
+source /opt/ros/humble/setup.bash && colcon build
+./install/foray_navigation/lib/foray_navigation/nav_node \
+  --ros-args -p params_file:=$PWD/config/shared.yaml \
+             -p robot_file:=$PWD/config/rmul_2027.yaml \
+             -p regions_file:=$PWD/config/rmul_2027.regions.txt
+```
+
+2026-11-10 在 Ubuntu 22.04 + Humble 上验证：`colcon build` 过；喂一张 4×3 m 带墙的地图 +
+固定位姿 + 目标后，节点规划出 6 个路径点、`cmd_vel` 达到 2.5 m/s 限速（20 Hz，120 帧）。
+
+> **还没接的**：TF / `foray_localization` 的位姿（现在直接吃 `odom`）、`foray_vision` 的动态障碍、
+> 参数动态重配。这些等上游接口定了再接，不然接口会返工。
 
 ## 依赖
 

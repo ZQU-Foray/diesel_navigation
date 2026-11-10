@@ -108,6 +108,27 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 add_test(NAME regions_test COMMAND regions_test)
 
+# ---- ROS 2 适配层（可选）----
+# 核心库**不依赖 ROS**：找不到 ROS 2 时整个目标跳过，纯 CMake 构建照常可用。
+find_package(rclcpp QUIET)
+find_package(geometry_msgs QUIET)
+find_package(nav_msgs QUIET)
+if(rclcpp_FOUND AND geometry_msgs_FOUND AND nav_msgs_FOUND)
+  add_executable(nav_node ros/nav_node.cpp)
+  target_link_libraries(nav_node PRIVATE
+    foray_navigation
+    rclcpp::rclcpp
+    geometry_msgs::geometry_msgs__rosidl_typesupport_cpp
+    nav_msgs::nav_msgs__rosidl_typesupport_cpp)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(nav_node PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  endif()
+  install(TARGETS nav_node DESTINATION lib/${PROJECT_NAME})
+  message(STATUS "ROS 2 适配层：开启（nav_node）")
+else()
+  message(STATUS "ROS 2 适配层：跳过（未找到 rclcpp / geometry_msgs / nav_msgs）")
+endif()
+
 include(GNUInstallDirs)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS foray_navigation EXPORT foray_navigationTargets)

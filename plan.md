@@ -19,6 +19,11 @@
   **离线压测已做**（随机起终点全到达、前后对比图见 `docs/figures/`）；
   **轨迹出图已做**（`nav_plot`，2026-11-10）；但**任务级端到端（按区域起终点跑完整任务）仍未做**
 
+- [x] **ROS 2 适配层（2026-11-10）**：`ros/nav_node.cpp`（**可选构建**：找不到 rclcpp 就跳过，
+      核心库仍只依赖标准库）。订阅 `map` / `odom` / `goal_pose`，发布 `cmd_vel`；
+      Ubuntu 22.04 + Humble 上 `colcon build` 通过，喂地图+位姿+目标的集成冒烟 **PASS**。
+      未接 TF / `foray_localization`（现在直接吃 `odom`）。
+
 ### 原基线清理（承接 fork 分支）
 
 - [ ] 清理 fork：删除 terrain_analysis 等已定删除项
@@ -30,10 +35,11 @@
 
 ## 当前 Agent State
 
-`NAV_ENGINE_DONE` —— 框架 + 引擎都落地了：接口 / 地图 / 代价图 / A\* / 隧道偏好 / 控制 / 主循环，
-六组测试全绿，2027 真图压测全到达。M5 的独立恢复状态机、M6 的任务级端到端、ROS 适配与上游接线仍属后续实现。
+`NAV_ENGINE_DONE + ROS_NODE` —— 框架、引擎、参数、区域表、诊断与出图工具都落地；ROS 2 适配层
+（`ros/nav_node.cpp`，可选构建）也通了：VM 里 `colcon build` 过、喂地图+位姿+目标的集成测试 PASS。
+剩下的是 **TF / 定位接线、M5 独立恢复状态机、M6 任务级端到端、实机验证**。
 
-> 2026-11-10：文档与代码对齐（README / plan / tree / decision），代码未改。
+> 2026-11-10：文档与代码对齐；同日加参数模块、区域表、出图工具、拐角缩前视、ROS 节点。
 
 ## Before Snapshot
 

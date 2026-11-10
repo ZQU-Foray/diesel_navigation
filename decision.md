@@ -453,3 +453,34 @@ Rejected:
 
 影响：此前按 0.25 m 口径记下的净空数字（0.11 / 0.166 m 等）**只作为历史对照**；
 新增数字一律按 0.32 m 口径，或写明「半径按 0.25 的旧口径」。
+
+---
+
+## Decision
+
+Date: 2026-11-10
+
+Context: 实机验证的前置是「车上能跑」——`NavEngine` 目前是个库，没有节点、话题、参数，`foray_robots`
+装配根拿不到任何东西。但本仓的纪律是「核心算法只依赖标准库、能脱 ROS 单测」，不能为了上车把它变成 ROS 包。
+
+Decision: **适配层独立成一个可选目标**（`ros/nav_node.cpp`）：
+CMake 里 `find_package(rclcpp QUIET)`，**找不到就整块跳过**，纯 CMake 构建与 8 个测试不受影响。
+节点接口取最小闭环：`map`（OccupancyGrid，`transient_local`）+ `odom` + `goal_pose` → `cmd_vel`；
+参数（`params_file` / `robot_file` / `regions_file` / `control_rate`）直接复用已有的负载层。
+
+Reason:
+- **库保持纯净**：CI 的两套构建（纯 CMake、`colcon build`）都能过；没有 ROS 的同学仍能跑全部测试；
+- 话题选 `odom` 而不是 TF：`foray_localization` 还没接，先保证「地图+位姿+目标→速度」这条链路；
+  接定位时只换这一处，不动引擎；
+- 地图用 `transient_local`：车上节点可能比地图服务晚起，锁存能让它补上上一张图（否则要等下一次发布）。
+
+Alternatives:
+- 把整个仓改成 ament_cmake 包：核心库会被迫依赖 rclcpp，单测也跑不动了——与本仓的立身之本冲突；
+- 直接上 nav2 插件（`nav2_core::Controller`）：绑定 Nav2 生态，与「不用 ROS 也能测」冲突，且调度权要交出去。
+
+Rejected:
+- 在节点里做 TF 树 / 坐标系变换：定位模块未定，现在写等于把别人的坑先踩一遍；
+- 把参数解析写第二遍：`params` / `regions` 已经就位，重复实现只会分叉。
+
+验证（2026-11-10，Ubuntu 22.04 + Humble）：`colcon build` 通过；集成冒烟（rclpy 发 4×3 m 带墙地图 +
+固定位姿 + 目标）→ 节点规划出 6 个路径点、`cmd_vel` 达到 2.5 m/s 限速、20 Hz 共 120 帧，判定 **PASS**。

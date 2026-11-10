@@ -51,6 +51,8 @@
 │   ├── nav_demo.cpp         演示：内置地图或真实 PGM 上跑通「规划→跟踪→到达」
 │   ├── nav_trace.cpp        逐帧诊断：位姿/指令/净空/状态，可导 CSV
 │   └── nav_plot.cpp         轨迹出图：CSV + 地图 → PPM（速度染色、起终点标记）
+├── ros/
+│   └── nav_node.cpp         ROS 2 适配层（可选构建）：map + odom + goal_pose → cmd_vel
 ├── test/                    独立可执行测试（不依赖测试框架）
 │   ├── grid_map_test.cpp    地图读入与坐标换算
 │   ├── costmap_test.cpp     代价图分层、膨胀幂等、过期障碍、细窄禁行带
