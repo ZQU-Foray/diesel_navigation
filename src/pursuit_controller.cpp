@@ -179,11 +179,27 @@ NavError PursuitController::compute(const Pose2& pose, const Path& path, double 
         return NavError::kNone;
     }
 
+    // 先算曲率：它同时决定「前视缩多少」和「速度降多少」。
+    const double curvature = estimate_curvature(path, current, params_.curvature_forward_dist);
+    double curvature_ratio = 0.0;
+    if (curvature > params_.curvature_min) {
+        const double span = std::max(1e-6, params_.curvature_max - params_.curvature_min);
+        curvature_ratio = clamp((curvature - params_.curvature_min) / span, 0.0, 1.0);
+    }
+
     // 1) 前视距离：速度自适应（用上次的速度估），再夹到 [min, max]。
+    //    然后按曲率缩：直道上长前视走得稳，拐角上还那么长就必然切内圈
+    //    （2026-11-10 实测：跟踪误差最大 0.241 m，切进安全边界 0.166 m）。
     const double speed_now = std::hypot(last_command_.vx, last_command_.vy);
     double lookahead =
         clamp(speed_now * params_.lookahead_time, params_.lookahead_min, params_.lookahead_max);
     lookahead *= lookahead_scale_;
+    lookahead *= 1.0 - curvature_ratio * (1.0 - params_.lookahead_corner_ratio);
+    // 前视再短就变成「原地打转」了：留一个下限。
+    const double kMinLookahead = 0.10;
+    if (lookahead < kMinLookahead) {
+        lookahead = kMinLookahead;
+    }
     if (!has_last_) {
         lookahead = params_.lookahead_min * lookahead_scale_;
     }
@@ -199,11 +215,9 @@ NavError PursuitController::compute(const Pose2& pose, const Path& path, double 
 
     // 3) 速度缩放：曲率降速 + 到点减速，取更保守的那个
     double scale = 1.0;
-    const double curvature = estimate_curvature(path, current, params_.curvature_forward_dist);
-    if (curvature > params_.curvature_min) {
-        const double span = std::max(1e-6, params_.curvature_max - params_.curvature_min);
-        const double ratio = clamp((curvature - params_.curvature_min) / span, 0.0, 1.0);
-        scale = std::min(scale, 1.0 - ratio * (1.0 - params_.reduction_ratio_at_high_curvature));
+    if (curvature_ratio > 0.0) {
+        scale = std::min(scale,
+                         1.0 - curvature_ratio * (1.0 - params_.reduction_ratio_at_high_curvature));
     }
     if (goal_distance < params_.approach_scaling_dist) {
         const double ratio =

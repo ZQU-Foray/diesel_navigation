@@ -26,6 +26,10 @@ engine.preview_time_s: 0.15
 engine.creep_scale: 0.25
 # 到点判定的朝向容差（弧度），只在 NavGoal::require_heading 为真时用。
 engine.heading_tolerance: 0.05
+# 膨胀外半径 / 内切半径：越大，规划越愿意离墙远一点（也越不愿意走窄道）。
+# 1.2 = 只在 0.25~0.30 m 之间"变贵"5 cm，A\* 于是贴着 0.25 m 线拉直线；
+# 3.0 = 0.75 m 内都有梯度，角尖净空从 0.166 → 0.250 m，十组总里程 +0.9 m。
+engine.inflation_span: 1.2
 # 护栏（刹车/安全自检用的那张更窄的图）膨胀上限，× 车体半径。
 # 0.6 = 比半个车体再多留一点；调大会让车离墙更远，但窄口可能过不去。
 engine.guard_ratio_max: 0.6
@@ -64,6 +68,11 @@ pursuit.min_approach_speed: 0.3
 pursuit.curvature_min: 0.4
 pursuit.curvature_max: 0.7
 pursuit.reduction_ratio_at_high_curvature: 0.5
+# 拐角处的前视缩短比例：曲率到 curvature_max 时前视缩到这个倍数。
+# 2026-11-10 实测（十组任务，跟踪误差 = 车到规划线的最大距离）：
+#   1.0（不缩）最大 0.241 m、平均 0.125 m；
+#   0.35      最大 0.173 m、平均 0.093 m，总里程反而少 0.15 m。
+pursuit.lookahead_corner_ratio: 0.35
 # 估计曲率时向前 / 向后看的距离（米）。
 pursuit.curvature_forward_dist: 0.7
 # 停止容差（米）：距终点小于它时输出零速。**不是到达判定**（到达由引擎按目标容差判）。

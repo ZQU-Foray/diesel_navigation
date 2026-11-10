@@ -94,6 +94,43 @@ float clearance_at(const foray::nav::CostmapView& map, const std::vector<float>&
                  static_cast<size_t>(x)];
 }
 
+/// 点到线段的距离（世界坐标，米）。
+double point_segment_distance(const foray::nav::Vec2& p, const foray::nav::Vec2& a,
+                              const foray::nav::Vec2& b) {
+    const double dx = b.x - a.x;
+    const double dy = b.y - a.y;
+    const double length_sq = dx * dx + dy * dy;
+    if (length_sq < 1e-12) {
+        return std::hypot(p.x - a.x, p.y - a.y);
+    }
+    double t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / length_sq;
+    if (t < 0.0) {
+        t = 0.0;
+    } else if (t > 1.0) {
+        t = 1.0;
+    }
+    const double qx = a.x + t * dx;
+    const double qy = a.y + t * dy;
+    return std::hypot(p.x - qx, p.y - qy);
+}
+
+/// 车实际位置到规划路径的最近距离（跟踪误差）。
+double distance_to_path(const foray::nav::Path& path, const foray::nav::Vec2& p) {
+    if (path.size() == 1) {
+        return std::hypot(p.x - path[0].x, p.y - path[0].y);
+    }
+    double best = 1e9;
+    for (size_t i = 1; i < path.size(); ++i) {
+        const foray::nav::Vec2 a{path[i - 1].x, path[i - 1].y};
+        const foray::nav::Vec2 b{path[i].x, path[i].y};
+        const double d = point_segment_distance(p, a, b);
+        if (d < best) {
+            best = d;
+        }
+    }
+    return best;
+}
+
 void usage() {
     std::printf("usage: nav_trace --yaml FILE --sx X --sy Y --gx X --gy Y [--csv FILE] "
                 "[--stall-only] [--params YAML] [--robot YAML] [--regions FILE]\n");
@@ -195,16 +232,23 @@ int main(int argc, char** argv) {
     if (!csv.empty()) {
         out = std::fopen(csv.c_str(), "w");
         if (out != nullptr) {
-            std::fprintf(out, "t,x,y,vx,vy,clearance,status,replans\n");
+            std::fprintf(out, "t,x,y,vx,vy,clearance,status,replans,path_err\n");
         }
     }
 
     int zero_streak = 0;
     int frame = 0;
+    double max_path_error = 0.0;
     for (; frame < 4000; ++frame) {
         foray::nav::VelocityCommand command{};
         const foray::nav::NavError err = engine.step(map, pose, kDt, &command);
         const float clear = clearance_at(map, field, foray::nav::Vec2{pose.x, pose.y});
+        // 跟踪误差：车实际位置到「规划路径」的最近距离。
+        // 这是改控制器时的尺子——只看「到没到」看不出切角有没有变好。
+        const double path_err = distance_to_path(engine.path(), foray::nav::Vec2{pose.x, pose.y});
+        if (path_err > max_path_error) {
+            max_path_error = path_err;
+        }
         const double speed = std::hypot(command.vx, command.vy);
         if (speed < 1e-6) {
             ++zero_streak;
@@ -213,9 +257,9 @@ int main(int argc, char** argv) {
         }
 
         if (out != nullptr) {
-            std::fprintf(out, "%.2f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d\n", frame * kDt, pose.x, pose.y,
-                         command.vx, command.vy, clear, static_cast<int>(engine.status()),
-                         engine.replan_count());
+            std::fprintf(out, "%.2f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%.3f\n", frame * kDt, pose.x,
+                         pose.y, command.vx, command.vy, clear, static_cast<int>(engine.status()),
+                         engine.replan_count(), path_err);
         }
         const bool interesting = (!stall_only) || zero_streak == 5 || engine.replan_count() > 0;
         if (interesting) {
@@ -239,5 +283,6 @@ int main(int argc, char** argv) {
     if (out != nullptr) {
         std::fclose(out);
     }
+    std::printf("max path_err=%.3f m（跟踪误差：车到规划线的最大距离）\n", max_path_error);
     return 0;
 }

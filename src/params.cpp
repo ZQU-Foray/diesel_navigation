@@ -189,6 +189,9 @@ bool apply_key(const std::string& key, const std::string& value, NavParams& p, c
         return read_number(key, value, &p.pursuit.reduction_ratio_at_high_curvature, parse_double,
                            ctx);
     }
+    if (key == "pursuit.lookahead_corner_ratio") {
+        return read_number(key, value, &p.pursuit.lookahead_corner_ratio, parse_double, ctx);
+    }
     if (key == "pursuit.curvature_forward_dist") {
         return read_number(key, value, &p.pursuit.curvature_forward_dist, parse_double, ctx);
     }
@@ -295,6 +298,10 @@ bool validate_params(const NavParams& params, std::string* error) {
     if (!(params.pursuit.reduction_ratio_at_high_curvature > 0.0 &&
           params.pursuit.reduction_ratio_at_high_curvature <= 1.0)) {
         return bad("pursuit.reduction_ratio_at_high_curvature 必须落在 (0, 1]");
+    }
+    if (!(params.pursuit.lookahead_corner_ratio > 0.0 &&
+          params.pursuit.lookahead_corner_ratio <= 1.0)) {
+        return bad("pursuit.lookahead_corner_ratio 必须落在 (0, 1]");
     }
     if (!(params.pursuit.stop_tolerance > 0.0)) {
         return bad("pursuit.stop_tolerance 必须为正");

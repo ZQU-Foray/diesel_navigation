@@ -45,6 +45,12 @@ struct PursuitParams {
     double curvature_min{0.4};
     double curvature_max{0.7};
     double reduction_ratio_at_high_curvature{0.5};
+    /// 拐角处的前视缩短比例：曲率到 `curvature_max` 时，前视缩到这个倍数。
+    ///
+    /// 为什么需要：前视越长，拐弯越贴内圈。2026-11-10 实测，在 0.25 m 安全线上规划的路径，
+    /// 纯追踪在左高地的两个角上切成 0.166 m（跟踪误差最大 0.241 m）——比车体半径还小。
+    /// 直道仍用长前视（稳），拐角缩到 0.35 倍。
+    double lookahead_corner_ratio{0.35};
     /// 估计曲率时向前/向后看的距离（米）。
     double curvature_forward_dist{0.7};
 
