@@ -19,6 +19,7 @@
 #include "foray/nav/costmap.hpp"
 #include "foray/nav/costmap_view.hpp"
 #include "foray/nav/pursuit_controller.hpp"
+#include "foray/nav/regions.hpp"
 #include "foray/nav/types.hpp"
 
 namespace foray {
@@ -91,6 +92,14 @@ class NavEngine {
     NavError last_error() const {
         return last_error_;
     }
+    /// 区域表：把「栅格图看不出、但人知道能过」的通道（隧道）标成偏好。
+    /// 引擎会在安全层和护栏层**膨胀之后**再把区域刷回来，否则膨胀会把隧道口糊死。
+    void set_preferred_regions(const std::vector<RectRegion>& regions) {
+        preferred_regions_ = regions;
+    }
+    const std::vector<RectRegion>& preferred_regions() const {
+        return preferred_regions_;
+    }
     Options& options() {
         return options_;
     }
@@ -143,6 +152,8 @@ class NavEngine {
     /// 按车体半径膨胀过的地图副本：规划与安全自检都用它，不用外部原图。
     Costmap safe_{};
     Costmap guard_{};
+    /// 人标的偏好区域（隧道）：每张派生图膨胀之后都要重新刷一遍。
+    std::vector<RectRegion> preferred_regions_{};
     NavGoal goal_{};
     Path path_{};
     NavStatus status_{NavStatus::kIdle};

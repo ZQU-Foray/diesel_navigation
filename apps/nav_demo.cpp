@@ -67,9 +67,11 @@ foray::nav::Costmap make_demo_map() {
 void print_usage() {
     std::printf(
         "用法: nav_demo [--yaml FILE] [--goal-x X] [--goal-y Y] [--params YAML] [--robot YAML]\n"
+        "               [--regions FILE]\n"
         "  默认用内置演示地图（4 m x 3 m，中间一堵墙留口）。\n"
-        "  --params  通用参数文件（如 config/shared.yaml）\n"
-        "  --robot   车种覆盖文件（如 config/rmul_2027.yaml），叠加在 --params 之上\n");
+        "  --params   通用参数文件（如 config/shared.yaml）\n"
+        "  --robot    车种覆盖文件（如 config/rmul_2027.yaml），叠加在 --params 之上\n"
+        "  --regions  区域表（隧道 / 通道，标成偏好）\n");
 }
 
 } // namespace
@@ -80,6 +82,7 @@ int main(int argc, char** argv) {
     double goal_y = 1.0;
     std::string params_path;
     std::string robot_path;
+    std::string regions_path;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -97,6 +100,8 @@ int main(int argc, char** argv) {
             params_path = argv[++i];
         } else if (arg == "--robot" && has_value) {
             robot_path = argv[++i];
+        } else if (arg == "--regions" && has_value) {
+            regions_path = argv[++i];
         } else {
             std::printf("未知参数: %s\n", arg.c_str());
             print_usage();
@@ -138,6 +143,15 @@ int main(int argc, char** argv) {
 
     foray::nav::NavEngine engine(params.astar, params.pursuit);
     engine.options() = params.engine;
+    if (!regions_path.empty()) {
+        std::vector<foray::nav::RectRegion> regions;
+        std::string regions_error;
+        if (!foray::nav::load_regions_file(regions_path, &regions, &regions_error)) {
+            std::printf("区域表加载失败: %s\n", regions_error.c_str());
+            return 1;
+        }
+        engine.set_preferred_regions(regions);
+    }
     if (!params_path.empty() || !robot_path.empty()) {
         std::printf("参数：车体半径 %.2f m，限速 %.2f m/s，最多重规划 %d 次（来源 %s%s%s）\n",
                     params.engine.robot_radius, params.pursuit.max_linear,

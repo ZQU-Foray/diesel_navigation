@@ -56,6 +56,8 @@ void NavEngine::build_safe_map(const CostmapView& map) {
         // 内切半径 = 车体半径：这个距离内一律致死，规划自然走中间。
         safe_.inflate(radius, radius * 1.2, 3.0);
     }
+    // 隧道这类「窄但确实能过」的通道：膨胀会把口子糊死，所以膨胀之后要刷回来。
+    apply_preferred_regions(safe_, map, preferred_regions_);
 }
 
 void NavEngine::build_guard_map(const CostmapView& map, double radius) {
@@ -68,6 +70,7 @@ void NavEngine::build_guard_map(const CostmapView& map, double radius) {
     if (radius > 0.0) {
         guard_.inflate(radius, radius * 1.2, 3.0);
     }
+    apply_preferred_regions(guard_, map, preferred_regions_);
 }
 
 void NavEngine::clear_disc(Costmap& map, const CostmapView& source, const Vec2& center,

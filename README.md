@@ -25,6 +25,7 @@
 | `src/pursuit_controller.cpp` | 纯追踪（全向、曲率与到点降速、幅值与变化率限幅） | `pursuit_controller_test` |
 | `src/nav_engine.cpp` | **主循环**：规划 → 跟踪 → 判到达 → 偏离/停滞重规划；安全层与护栏层两级膨胀、起终点兜底、安全自检 | `nav_engine_test` |
 | `include/foray/nav/params.hpp` + `src/params.cpp` | **参数出代码**：扁平 YAML 两级覆盖（`shared` → `<robot>`），未知键与越界值直接报错 | `params_test` |
+| `include/foray/nav/regions.hpp` + `src/regions.cpp` | **区域表**：把「图上画成墙、但人能过」的隧道补回代价图（`tunnel` 可覆盖墙，`preferred` 不行） | `regions_test` |
 | `apps/nav_demo.cpp` | 4 m × 3 m 人造带墙图上跑通「规划→跟踪→到达」；也可读真实 PGM | — |
 | `apps/nav_trace.cpp` | 逐帧诊断：位姿/指令/净空/状态，可导 CSV、可只看卡住段 | — |
 | `apps/nav_plot.cpp` | 把 `nav_trace` 的 CSV 画到地图上，输出 PPM：速度染色 + 起终点标记 | — |
@@ -112,6 +113,26 @@ ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
 - 格式刻意保持**扁平**（`key: value`，`#` 起注释），不依赖第三方 YAML 库；
 - **键名写错、数值不合法都会报错并指到「文件:行」**——静默忽略的代价是「调了半天，发现改的是另一个名字」；
 - 每个键的默认值与来历（哪些是**待实测**的借用值）都写在 `config/shared.yaml` 的注释里。
+
+### 区域表（隧道）
+
+2027 场地有两条隧道，PGM 把它们画成实心黑柱（约 0.4 m 宽）——**图上看着就是墙**，
+再按车体半径一膨胀，连柱子两侧 0.25 m 的空地也糊成致死，路就彻底断了。
+这一层信息只能由人来标，写在 `config/rmul_2027.regions.txt`：
+
+```
+tunnel    3.00 7.05 4.00 7.87     # 上隧道：可覆盖原图上的「墙」
+tunnel    8.00 0.12 9.00 0.95     # 下隧道
+preferred ...                     # 只想「更想走」、不许覆盖墙的区域
+```
+
+```bash
+<build>/nav_trace ... --regions config/rmul_2027.regions.txt
+```
+
+- `tunnel` 是**人的显式决定**：允许把原图上的致死格打开（未知格永远不打开）；
+- 区域要**沿通道轴各放宽约 0.3 m**，否则隧道口仍被膨胀带封死（实测：只标柱子本身，路线一点不变）；
+- 实测效果：横穿全图同一任务，**18.10 → 14.48 m**、9.5 → 7.1 s。
 
 ## 依赖
 

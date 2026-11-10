@@ -96,7 +96,7 @@ float clearance_at(const foray::nav::CostmapView& map, const std::vector<float>&
 
 void usage() {
     std::printf("usage: nav_trace --yaml FILE --sx X --sy Y --gx X --gy Y [--csv FILE] "
-                "[--stall-only] [--params YAML] [--robot YAML]\n");
+                "[--stall-only] [--params YAML] [--robot YAML] [--regions FILE]\n");
 }
 
 } // namespace
@@ -111,6 +111,7 @@ int main(int argc, char** argv) {
     bool stall_only = false;
     std::string params_path;
     std::string robot_path;
+    std::string regions_path;
 
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -131,6 +132,8 @@ int main(int argc, char** argv) {
             params_path = argv[++i];
         } else if (a == "--robot" && has) {
             robot_path = argv[++i];
+        } else if (a == "--regions" && has) {
+            regions_path = argv[++i];
         } else if (a == "--stall-only") {
             stall_only = true;
         } else {
@@ -168,6 +171,16 @@ int main(int argc, char** argv) {
 
     foray::nav::NavEngine engine(params.astar, params.pursuit);
     engine.options() = params.engine;
+    if (!regions_path.empty()) {
+        std::vector<foray::nav::RectRegion> regions;
+        std::string regions_error;
+        if (!foray::nav::load_regions_file(regions_path, &regions, &regions_error)) {
+            std::printf("区域表加载失败: %s\n", regions_error.c_str());
+            return 1;
+        }
+        engine.set_preferred_regions(regions);
+        std::printf("区域表: %zu 块（隧道标为偏好）\n", regions.size());
+    }
     foray::nav::NavGoal goal;
     goal.pose = foray::nav::Pose2{gx, gy, 0.0};
     foray::nav::Pose2 pose{sx, sy, 0.0};
