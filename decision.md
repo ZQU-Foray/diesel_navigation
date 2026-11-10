@@ -331,3 +331,29 @@ Rejected:
 
 配套：`config/shared.yaml` 里每个键都写了来历，**标「待实测」的就是还没在车上量过的借用值**
 （车体半径 0.25、限速 2.5、加速度 6.0）。
+
+---
+
+## Decision
+
+Date: 2026-11-10
+
+Context: `nav_trace` 只会打数和导 CSV；「车这一趟到底怎么走的、在哪儿蹭的墙」要靠人脑在几百行里拼。
+调参、review、PR 的效果展示都需要一张图。
+
+Decision: 新增 `nav_plot`：读 `nav_trace` 的 CSV + 地图，输出 **PPM（P6）**，
+轨迹按速度染色，起点绿、终点红。
+
+Reason:
+- **图是给眼睛的**：数字能说明「到没到」，图能说明「他怎么绕的、在哪儿慢下来」；
+- **不引 PNG 编码库**：本仓只依赖标准库，而 PPM 是「几行头 + 裸 RGB」，任何脚本 / 看图工具都能转；
+  为了省一次转换去引 zlib/libpng，属于本末倒置；
+- 输出文件（`trace.ppm`）不入库：图是证据，不是资产——要进 PR 的图有 `docs/figures/` 的先例。
+
+Alternatives:
+- 把 CSV 丢给 matplotlib / gnuplot：调参的人手上要装 Python 环境，本仓 CI 也不装；
+- 在 C++ 里手写 PNG（自带 zlib 压缩）：能省一次转换，但要自己实现 CRC 与 DEFLATE，风险大于收益。
+
+Rejected:
+- 让 `nav_trace` 自己顺便出图：诊断与出图混在一个工具里，改任一个都牵连另一个；
+- 用 ASCII 艺术画在终端里：512 × 352 的场地图缩到 80 列之后，什么也看不清。

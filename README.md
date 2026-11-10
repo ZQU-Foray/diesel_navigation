@@ -27,6 +27,7 @@
 | `include/foray/nav/params.hpp` + `src/params.cpp` | **参数出代码**：扁平 YAML 两级覆盖（`shared` → `<robot>`），未知键与越界值直接报错 | `params_test` |
 | `apps/nav_demo.cpp` | 4 m × 3 m 人造带墙图上跑通「规划→跟踪→到达」；也可读真实 PGM | — |
 | `apps/nav_trace.cpp` | 逐帧诊断：位姿/指令/净空/状态，可导 CSV、可只看卡住段 | — |
+| `apps/nav_plot.cpp` | 把 `nav_trace` 的 CSV 画到地图上，输出 PPM：速度染色 + 起终点标记 | — |
 | `maps/rmul_2027/` | 2027 3V3 场地图（512 × 352、0.025 m/格） | — |
 
 **未实现（后续）**：
@@ -89,7 +90,10 @@ ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
 
 # 逐帧诊断：改控制环之前先看数据，别只看红绿
 <build>/nav_trace --yaml maps/rmul_2027/rmul_2027.yaml --sx 1.9 --sy 5.1 --gx 6.6 --gy 0.5
-<build>/nav_trace --yaml maps/rmul_2027/rmul_2027.yaml --sx 1.9 --sy 5.1 --gx 6.6 --gy 0.5 --csv > trace.csv
+<build>/nav_trace --yaml maps/rmul_2027/rmul_2027.yaml --sx 1.9 --sy 5.1 --gx 6.6 --gy 0.5 --csv trace.csv
+
+# 把这一趟画成图：蓝=慢、红=快，绿点起点、红点终点（PPM，--scale 放大）
+<build>/nav_plot --yaml maps/rmul_2027/rmul_2027.yaml --csv trace.csv --out trace.ppm --scale 2
 ```
 
 > `<build>` 指上面 `cmake --build` 用的那个构建目录，例如 `~/.cache/foray-navigation-build`。
