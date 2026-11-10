@@ -110,8 +110,7 @@ bool read_number(const std::string& key, const std::string& text, T* field,
 
 /// 把一个键写到参数结构里；键不认得就报错（拼错不许静默忽略——静默的下场是
 /// 「调了半天发现改的是另一个名字」）。
-bool apply_key(const std::string& key, const std::string& value, NavParams& p,
-               const Context& ctx) {
+bool apply_key(const std::string& key, const std::string& value, NavParams& p, const Context& ctx) {
     if (key == "engine.robot_radius") {
         return read_number(key, value, &p.engine.robot_radius, parse_double, ctx);
     }
@@ -178,8 +177,8 @@ bool apply_key(const std::string& key, const std::string& value, NavParams& p,
         return read_number(key, value, &p.pursuit.curvature_max, parse_double, ctx);
     }
     if (key == "pursuit.reduction_ratio_at_high_curvature") {
-        return read_number(key, value, &p.pursuit.reduction_ratio_at_high_curvature,
-                           parse_double, ctx);
+        return read_number(key, value, &p.pursuit.reduction_ratio_at_high_curvature, parse_double,
+                           ctx);
     }
     if (key == "pursuit.curvature_forward_dist") {
         return read_number(key, value, &p.pursuit.curvature_forward_dist, parse_double, ctx);

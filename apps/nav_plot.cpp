@@ -43,12 +43,11 @@ struct Rgb {
 };
 
 void usage() {
-    std::printf(
-        "usage: nav_plot --yaml MAP.yaml --csv TRACE.csv [--out OUT.ppm] [--scale N]\n"
-        "  MAP.yaml  地图元数据（PGM 同目录参照）\n"
-        "  TRACE.csv nav_trace --csv 导出的逐帧记录\n"
-        "  OUT.ppm   输出文件名，默认 trace.ppm\n"
-        "  --scale   放大倍数，默认 1\n");
+    std::printf("usage: nav_plot --yaml MAP.yaml --csv TRACE.csv [--out OUT.ppm] [--scale N]\n"
+                "  MAP.yaml  地图元数据（PGM 同目录参照）\n"
+                "  TRACE.csv nav_trace --csv 导出的逐帧记录\n"
+                "  OUT.ppm   输出文件名，默认 trace.ppm\n"
+                "  --scale   放大倍数，默认 1\n");
 }
 
 /// 代价 → 颜色。低代价（偏好）偏蓝，高代价（膨胀 → 致死）越来越深。
@@ -104,8 +103,8 @@ void put(std::vector<Rgb>& image, int w, int h, int x, int y, const Rgb& c, int 
 }
 
 /// Bresenham：轨迹是折线，格子和格子之间要连起来，不能只点格子。
-void draw_line(std::vector<Rgb>& image, int w, int h, int x0, int y0, int x1, int y1,
-               const Rgb& c, int scale) {
+void draw_line(std::vector<Rgb>& image, int w, int h, int x0, int y0, int x1, int y1, const Rgb& c,
+               int scale) {
     int dx = std::abs(x1 - x0);
     int dy = -std::abs(y1 - y0);
     const int sx = x0 < x1 ? 1 : -1;

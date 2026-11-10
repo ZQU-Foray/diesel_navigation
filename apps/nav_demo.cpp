@@ -140,8 +140,9 @@ int main(int argc, char** argv) {
     engine.options() = params.engine;
     if (!params_path.empty() || !robot_path.empty()) {
         std::printf("参数：车体半径 %.2f m，限速 %.2f m/s，最多重规划 %d 次（来源 %s%s%s）\n",
-                    params.engine.robot_radius, params.pursuit.max_linear, params.engine.max_replans,
-                    params_path.c_str(), robot_path.empty() ? "" : " + ", robot_path.c_str());
+                    params.engine.robot_radius, params.pursuit.max_linear,
+                    params.engine.max_replans, params_path.c_str(), robot_path.empty() ? "" : " + ",
+                    robot_path.c_str());
     }
     const foray::nav::Pose2 start{0.5, 0.5, 0.0};
     foray::nav::NavGoal goal;

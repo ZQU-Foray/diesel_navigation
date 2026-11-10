@@ -53,8 +53,8 @@ bool parse_params_text(const std::string& text, NavParams* out, std::string* err
 bool load_params_file(const std::string& path, NavParams* out, std::string* error);
 
 /// 两级加载：先 `shared_path`，再用 `robot_path` 覆盖；任一文件读失败即整体失败。
-bool load_params(const std::string& shared_path, const std::string& robot_path,
-                 NavParams* out, std::string* error);
+bool load_params(const std::string& shared_path, const std::string& robot_path, NavParams* out,
+                 std::string* error);
 
 /// 参数合法性检查（半径为正、容差非负、限速为正……）。
 /// @note 单独暴露出来，是因为调用方可能自己拼参数而不读文件。

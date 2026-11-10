@@ -50,13 +50,12 @@ void test_defaults_match_struct_defaults() {
 void test_parse_overrides_numbers_and_bools() {
     foray::nav::NavParams params;
     std::string error;
-    const char* text =
-        "# 注释行\n"
-        "\n"
-        "engine.robot_radius: 0.31\n"
-        "engine.max_replans: 5    # 行尾注释\n"
-        "astar.smooth: false\n"
-        "pursuit.max_linear: 1.75\n";
+    const char* text = "# 注释行\n"
+                       "\n"
+                       "engine.robot_radius: 0.31\n"
+                       "engine.max_replans: 5    # 行尾注释\n"
+                       "astar.smooth: false\n"
+                       "pursuit.max_linear: 1.75\n";
 
     check(foray::nav::parse_params_text(text, &params, &error, "<test>"), "parse ok");
     check(error.empty(), "no error text");
@@ -119,8 +118,9 @@ void test_range_validation() {
           "creep_scale above 1 rejected");
 
     foray::nav::NavParams params3;
-    check(!foray::nav::parse_params_text("pursuit.curvature_max: 0.2\n", &params3, &error, "x.yaml"),
-          "curvature_max below curvature_min rejected");
+    check(
+        !foray::nav::parse_params_text("pursuit.curvature_max: 0.2\n", &params3, &error, "x.yaml"),
+        "curvature_max below curvature_min rejected");
 }
 
 void test_missing_file_is_error() {
@@ -135,8 +135,8 @@ void test_missing_file_is_error() {
 void test_repo_config_files_load() {
     foray::nav::NavParams params;
     std::string error;
-    const bool ok = foray::nav::load_params("config/shared.yaml", "config/rmul_2027.yaml",
-                                            &params, &error);
+    const bool ok =
+        foray::nav::load_params("config/shared.yaml", "config/rmul_2027.yaml", &params, &error);
     if (!ok) {
         std::printf("NOTE: 仓库配置没找到（在构建目录里跑测试时正常）：%s\n", error.c_str());
         return; // 构建目录不是仓库根时不算失败
