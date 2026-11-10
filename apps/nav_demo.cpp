@@ -30,6 +30,7 @@
 #include "foray/nav/costmap.hpp"
 #include "foray/nav/grid_map.hpp"
 #include "foray/nav/nav_engine.hpp"
+#include "foray/nav/params.hpp"
 
 namespace {
 
@@ -64,8 +65,11 @@ foray::nav::Costmap make_demo_map() {
 }
 
 void print_usage() {
-    std::printf("用法: nav_demo [--yaml FILE] [--goal-x X] [--goal-y Y]\n"
-                "  默认用内置演示地图（4 m x 3 m，中间一堵墙留口）。\n");
+    std::printf(
+        "用法: nav_demo [--yaml FILE] [--goal-x X] [--goal-y Y] [--params YAML] [--robot YAML]\n"
+        "  默认用内置演示地图（4 m x 3 m，中间一堵墙留口）。\n"
+        "  --params  通用参数文件（如 config/shared.yaml）\n"
+        "  --robot   车种覆盖文件（如 config/rmul_2027.yaml），叠加在 --params 之上\n");
 }
 
 } // namespace
@@ -74,6 +78,8 @@ int main(int argc, char** argv) {
     std::string yaml_path;
     double goal_x = 3.4;
     double goal_y = 1.0;
+    std::string params_path;
+    std::string robot_path;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -87,6 +93,10 @@ int main(int argc, char** argv) {
             goal_x = std::atof(argv[++i]);
         } else if (arg == "--goal-y" && has_value) {
             goal_y = std::atof(argv[++i]);
+        } else if (arg == "--params" && has_value) {
+            params_path = argv[++i];
+        } else if (arg == "--robot" && has_value) {
+            robot_path = argv[++i];
         } else {
             std::printf("未知参数: %s\n", arg.c_str());
             print_usage();
@@ -110,7 +120,29 @@ int main(int argc, char** argv) {
         map = &demo;
     }
 
-    foray::nav::NavEngine engine;
+    // 参数：命令行给了就读文件，没给就用编译期默认值（与解析器默认保持一致）。
+    foray::nav::NavParams params;
+    if (!params_path.empty()) {
+        std::string params_error;
+        if (!foray::nav::load_params(params_path, robot_path, &params, &params_error)) {
+            std::printf("参数加载失败: %s\n", params_error.c_str());
+            return 1;
+        }
+    } else if (!robot_path.empty()) {
+        std::string params_error;
+        if (!foray::nav::load_params_file(robot_path, &params, &params_error)) {
+            std::printf("参数加载失败: %s\n", params_error.c_str());
+            return 1;
+        }
+    }
+
+    foray::nav::NavEngine engine(params.astar, params.pursuit);
+    engine.options() = params.engine;
+    if (!params_path.empty() || !robot_path.empty()) {
+        std::printf("参数：车体半径 %.2f m，限速 %.2f m/s，最多重规划 %d 次（来源 %s%s%s）\n",
+                    params.engine.robot_radius, params.pursuit.max_linear, params.engine.max_replans,
+                    params_path.c_str(), robot_path.empty() ? "" : " + ", robot_path.c_str());
+    }
     const foray::nav::Pose2 start{0.5, 0.5, 0.0};
     foray::nav::NavGoal goal;
     goal.pose = foray::nav::Pose2{goal_x, goal_y, 0.0};

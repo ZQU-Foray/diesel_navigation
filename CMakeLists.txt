@@ -13,6 +13,7 @@ add_library(foray_navigation
   src/astar_planner.cpp
   src/pursuit_controller.cpp
   src/nav_engine.cpp
+  src/params.cpp
 )
 add_library(Foray::Navigation ALIAS foray_navigation)
 
@@ -85,6 +86,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(types_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME types_test COMMAND types_test)
+
+add_executable(params_test test/params_test.cpp)
+target_link_libraries(params_test PRIVATE foray_navigation)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(params_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME params_test COMMAND params_test)
 
 include(GNUInstallDirs)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

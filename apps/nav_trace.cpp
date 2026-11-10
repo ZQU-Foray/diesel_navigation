@@ -29,6 +29,7 @@
 
 #include "foray/nav/grid_map.hpp"
 #include "foray/nav/nav_engine.hpp"
+#include "foray/nav/params.hpp"
 
 namespace {
 
@@ -95,7 +96,7 @@ float clearance_at(const foray::nav::CostmapView& map, const std::vector<float>&
 
 void usage() {
     std::printf("usage: nav_trace --yaml FILE --sx X --sy Y --gx X --gy Y [--csv FILE] "
-                "[--stall-only]\n");
+                "[--stall-only] [--params YAML] [--robot YAML]\n");
 }
 
 } // namespace
@@ -108,6 +109,8 @@ int main(int argc, char** argv) {
     double gy = 1.0;
     std::string csv;
     bool stall_only = false;
+    std::string params_path;
+    std::string robot_path;
 
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -124,6 +127,10 @@ int main(int argc, char** argv) {
             gy = std::atof(argv[++i]);
         } else if (a == "--csv" && has) {
             csv = argv[++i];
+        } else if (a == "--params" && has) {
+            params_path = argv[++i];
+        } else if (a == "--robot" && has) {
+            robot_path = argv[++i];
         } else if (a == "--stall-only") {
             stall_only = true;
         } else {
@@ -144,7 +151,23 @@ int main(int argc, char** argv) {
     }
     const std::vector<float> field = make_clearance(map);
 
-    foray::nav::NavEngine engine;
+    foray::nav::NavParams params;
+    if (!params_path.empty()) {
+        std::string params_error;
+        if (!foray::nav::load_params(params_path, robot_path, &params, &params_error)) {
+            std::printf("参数加载失败: %s\n", params_error.c_str());
+            return 1;
+        }
+    } else if (!robot_path.empty()) {
+        std::string params_error;
+        if (!foray::nav::load_params_file(robot_path, &params, &params_error)) {
+            std::printf("参数加载失败: %s\n", params_error.c_str());
+            return 1;
+        }
+    }
+
+    foray::nav::NavEngine engine(params.astar, params.pursuit);
+    engine.options() = params.engine;
     foray::nav::NavGoal goal;
     goal.pose = foray::nav::Pose2{gx, gy, 0.0};
     foray::nav::Pose2 pose{sx, sy, 0.0};
