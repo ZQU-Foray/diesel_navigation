@@ -86,7 +86,7 @@ void test_yaml_parse() {
     // 旋转 origin 必须失败（本仓不支持）
     MapMeta rotated;
     check(!diesel::nav::parse_map_meta("image: x.pgm\nresolution: 0.05\norigin: [0,0,1.57]\n",
-                                      &rotated, &error),
+                                       &rotated, &error),
           "rotated origin rejected");
 }
 

@@ -114,7 +114,8 @@ void test_goal_in_lethal_fails() {
     diesel::nav::NavEngine engine;
     diesel::nav::NavGoal goal;
     goal.pose = diesel::nav::Pose2{2.025, 1.525, 0.0}; // 正好落在 (40,30) 格心
-    const diesel::nav::NavError error = engine.set_goal(map, goal, diesel::nav::Pose2{0.5, 0.5, 0.0});
+    const diesel::nav::NavError error =
+        engine.set_goal(map, goal, diesel::nav::Pose2{0.5, 0.5, 0.0});
     check(error != diesel::nav::NavError::kNone, "engine: lethal goal rejected");
     check(engine.status() == diesel::nav::NavStatus::kFailed, "engine: status becomes failed");
 }
@@ -315,7 +316,8 @@ void test_rejects_invalid_input() {
     check(engine.step(map, diesel::nav::Pose2{nan, 0.5, 0.0}, kDt, &command) ==
               diesel::nav::NavError::kInvalidInput,
           "invalid: NaN pose rejected");
-    check(engine.status() != diesel::nav::NavStatus::kReached, "invalid: NaN pose is not 'reached'");
+    check(engine.status() != diesel::nav::NavStatus::kReached,
+          "invalid: NaN pose is not 'reached'");
 }
 
 /// 原点非零的地图：路径必须与真实的墙对齐。
@@ -361,7 +363,7 @@ void test_nonzero_origin_alignment() {
         for (int k = 0; k <= samples; ++k) {
             const double t = static_cast<double>(k) / samples;
             const diesel::nav::Vec2 p{path[i].x + (path[i + 1].x - path[i].x) * t,
-                                     path[i].y + (path[i + 1].y - path[i].y) * t};
+                                      path[i].y + (path[i + 1].y - path[i].y) * t};
             int ix = 0;
             int iy = 0;
             if (!map.world_to_grid(p, &ix, &iy)) {

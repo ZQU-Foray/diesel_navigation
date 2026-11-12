@@ -246,7 +246,8 @@ void test_stale_obstacles_expire() {
     int ix = -1;
     int iy = -1;
     check(costmap.world_to_grid(diesel::nav::Vec2{1.0, 1.0}, &ix, &iy), "stale: center in grid");
-    check(costmap.cost_at(ix, iy) != diesel::nav::kCostLethal, "stale: expired obstacle is ignored");
+    check(costmap.cost_at(ix, iy) != diesel::nav::kCostLethal,
+          "stale: expired obstacle is ignored");
 }
 
 /// 比一格还窄的禁行带也要画出来，不能整条漏掉。

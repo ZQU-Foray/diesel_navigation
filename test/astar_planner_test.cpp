@@ -156,7 +156,8 @@ void test_narrow_corridor() {
         const auto error =
             planner.plan(map, diesel::nav::Pose2{0.5, 1.0, 0.0}, diesel::nav::Pose2{3.5, 1.0, 0.0},
                          diesel::nav::PlanningOptions{}, &path);
-        check(error == diesel::nav::NavError::kNone, "narrow(1 cell): still geometrically passable");
+        check(error == diesel::nav::NavError::kNone,
+              "narrow(1 cell): still geometrically passable");
         // 但斜穿犄角被禁止：路径必须正交穿过缺口，不允许"蹭着走"
         check(path.size() >= 2, "narrow(1 cell): has path");
     }
@@ -224,7 +225,8 @@ void test_tunnel_preferred() {
     for (const auto& pose : no_pref) {
         int ix = 0;
         int iy = 0;
-        if (map.world_to_grid(diesel::nav::Vec2{pose.x, pose.y}, &ix, &iy) && iy >= 18 && iy <= 22) {
+        if (map.world_to_grid(diesel::nav::Vec2{pose.x, pose.y}, &ix, &iy) && iy >= 18 &&
+            iy <= 22) {
             no_pref_mid = true;
         }
     }
