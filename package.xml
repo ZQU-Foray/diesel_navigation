@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>foray_navigation</name>
+  <version>0.1.0</version>
+  <description>Foray L4 导航：静态地图规划 + 动态障碍规避 + 全向控制器（核心算法不依赖 ROS）</description>
+  <maintainer email="Heart-0251@outlook.com">Foray Navigation</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- 核心库零外部依赖（只用标准库）；下面三条只被可选的 ROS 2 适配层（ros/nav_node.cpp）用到。
+       找不到这些包时 CMake 会跳过 nav_node，纯 CMake 构建不受影响。 -->
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+
+  <!-- 接上游（foray_interfaces / foray_platform / foray_localization）时在这里补 <depend>，
+       否则 rosdep 拿不到依赖声明（审计 TS-6）。 -->
+  <buildtool_depend>cmake</buildtool_depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+</package>

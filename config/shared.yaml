@@ -1,0 +1,85 @@
+# foray_navigation · 通用参数（shared）
+#
+# 这是「本仓通用」的一层；车种 / 赛季的差异写到 `<robot>.yaml` 里覆盖它。
+# 加载顺序：shared.yaml → <robot>.yaml（后者覆盖前者）。
+#
+# 格式：一行一个 `key: value`，`#` 起注释。键名写错会直接报错，不会静默忽略。
+#
+# 口径：标「待实测」的默认值是从参考实机 / 开源配置借来的，**不是我们车上量出来的**。
+# 实车一上去，先改这文件，不要改代码。
+
+# ---- 引擎（NavEngine）----
+# 车体半径（米，含余量）。2027 哨兵实测 593 × 593 × 243 mm：半宽 296.5 mm、外接半径 419 mm。
+# 取 0.32 = 半宽 + 约 23 mm 余量（和代码默认值一致）。换车种请改 rmul_2027.yaml，别改这里。
+engine.robot_radius: 0.32
+# 车离路径超过这个距离才重规划（米）。太小会抖，太大会贴着旧路径死走。
+engine.deviation_replan_dist: 0.50
+# 单次任务最多重规划几次；用尽就判失败（kProgressStalled）。
+engine.max_replans: 3
+# 判停滞的时间窗（秒）：这么久里到目标的距离没有推进，就算卡住。
+engine.stall_window_s: 2.0
+# 判停滞的最小推进量（米）。
+engine.stall_progress_m: 0.05
+# 安全自检往前看多久（秒）：按当前指令推演这段路程，看会不会撞上。
+engine.preview_time_s: 0.15
+# 撞上就按这个比例减速（爬行），还不行就零速并重规划。必须落在 (0, 1]。
+engine.creep_scale: 0.25
+# 到点判定的朝向容差（弧度），只在 NavGoal::require_heading 为真时用。
+engine.heading_tolerance: 0.05
+# 膨胀外半径 / 内切半径：越大，规划越愿意离墙远一点（也越不愿意走窄道）。
+# 1.2 = 只在 0.32~0.384 m 之间"变贵"，A\* 于是贴着 0.32 m 安全线拉直线；
+# 3.0 = 0.96 m 内都有梯度，路线会走走廊中线（旧半径 0.25 口径下实测角尖 0.166 → 0.250 m）。
+engine.inflation_span: 1.2
+# 护栏（刹车/安全自检用的那张更窄的图）膨胀上限，× 车体半径。
+# 0.6 × 0.32 = 0.192 m：比半个车体（0.2965 m）还小，是"刹车/自检"用的短余量，不是规划余量。
+engine.guard_ratio_max: 0.6
+# 护栏膨胀下限，× 车体半径：车贴得比这更近时按实际净空退，但不退到这条线以下。
+# **这条是安全与通过性的权衡**。2026-11-10 实测（半径按 0.25 的旧口径）：0.4 时全程最小净空
+# 只有 0.11 m，小于车体半宽，实车会蹭墙；调到 0.6（= 上限）后同一批 30 组仍 30/30 到达。
+# **按实测车体（593 mm，半宽 296.5 mm）重算：0.6 × 0.32 = 0.192 m**——这才是够用的绝对值。
+# 要重新放开贴墙能力，把它调小（比如 0.4），但要知道那对应 0.128 m，小于半宽。
+engine.guard_floor_ratio: 0.6
+
+# ---- 全局规划（A*）----
+# 膨胀代价折算成行走代价的权重：代价 252 的格子视为 1+weight 倍。
+astar.cost_weight: 3.0
+# 偏好区（kCostPreferred，隧道优先）的行走权重：小于 1 表示「更想走这里」。
+astar.prefer_weight: 0.5
+# 是否做视线捷径化（去掉能直连却还绕一格的锯齿点）。
+astar.smooth: true
+# 单次规划最多展开的格子数（防御性上界）。
+astar.max_expansions: 200000
+
+# ---- 局部控制（纯追踪）----
+# 前视距离（米）：速度自适应时 lookahead_max 是上限。
+pursuit.lookahead_min: 0.35
+pursuit.lookahead_max: 2.0
+# 前视 = clamp(v * lookahead_time, min, max)。
+pursuit.lookahead_time: 1.0
+# 平移速度上限（米/秒）。**待实测**：这是借来的值，不是我们车的实测值。
+pursuit.max_linear: 2.5
+# 速度变化率上限（m/s²），防甩。**待实测**。
+pursuit.max_accel: 6.0
+# 到点减速：距终点这么近开始线性降速（米）。
+pursuit.approach_scaling_dist: 1.0
+# 到点减速时的最低速度（米/秒）。
+pursuit.min_approach_speed: 0.3
+# 曲率降速：超过 curvature_min 开始降，超过 curvature_max 降到 reduction 比例。
+pursuit.curvature_min: 0.4
+pursuit.curvature_max: 0.7
+pursuit.reduction_ratio_at_high_curvature: 0.5
+# 拐角处的前视缩短比例：曲率到 curvature_max 时前视缩到这个倍数。
+# 2026-11-10 实测（十组任务，跟踪误差 = 车到规划线的最大距离；**半径按 0.25 的旧口径**）：
+#   1.0（不缩）最大 0.241 m、平均 0.125 m；
+#   0.35      最大 0.173 m、平均 0.093 m，总里程反而少 0.15 m。
+# 按实测车体 0.32 重跑（本值 0.35 时）：十组最大 0.185 m，仍 10/10 到达。
+pursuit.lookahead_corner_ratio: 0.35
+# 估计曲率时向前 / 向后看的距离（米）。
+pursuit.curvature_forward_dist: 0.7
+# 停止容差（米）：距终点小于它时输出零速。**不是到达判定**（到达由引擎按目标容差判）。
+pursuit.stop_tolerance: 0.15
+# 到点后要不要把车头对到路径末端朝向（全向底盘默认 false）。
+pursuit.align_heading_at_goal: false
+pursuit.heading_gain: 2.0
+pursuit.max_omega: 2.0
+pursuit.heading_tolerance: 0.05

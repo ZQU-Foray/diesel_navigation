@@ -36,6 +36,9 @@ compile_commands.json
 *.db3
 *.mcap
 recordings/
+# nav_trace / nav_plot 的临时输出（图是证据，不是资产）
+*.ppm
+trace.csv
 
 # ---- 本地参数覆盖（不得提交标定值） ----
 local/
