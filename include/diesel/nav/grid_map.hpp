@@ -22,7 +22,7 @@
 #include "diesel/nav/costmap_view.hpp"
 #include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 2D 栅格地图的元数据，对应 map_server 风格的 YAML（只取本仓用得到的字段）。
@@ -118,6 +118,6 @@ class GridMap : public CostmapView {
 bool parse_map_meta(const std::string& yaml_text, MapMeta* meta, std::string* error);
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__GRID_MAP_HPP_

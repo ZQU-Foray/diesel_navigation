@@ -17,7 +17,7 @@
 
 #include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 局部控制器接口：给当前位姿、一条路径和周期，出一个底盘速度指令。
@@ -56,6 +56,6 @@ class LocalController {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__CONTROLLER_HPP_

@@ -19,7 +19,7 @@
 
 #include "diesel/nav/planner.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// A* 全局规划器参数。
@@ -64,6 +64,6 @@ class AstarPlanner : public GlobalPlanner {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__ASTAR_PLANNER_HPP_

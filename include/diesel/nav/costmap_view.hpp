@@ -19,7 +19,7 @@
 
 #include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 代价编码：**数值越小越划算**，与语义顺序一致（按评审意见统一）。
@@ -102,6 +102,6 @@ class CostmapView {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__COSTMAP_VIEW_HPP_

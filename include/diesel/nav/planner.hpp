@@ -20,7 +20,7 @@
 #include "diesel/nav/costmap_view.hpp"
 #include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 规划预算：把"能不能在要求时间内返回"写进契约，而不是留给实现自觉。
@@ -58,6 +58,6 @@ class GlobalPlanner {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__PLANNER_HPP_

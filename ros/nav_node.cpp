@@ -47,7 +47,7 @@
 #include "diesel/nav/params.hpp"
 #include "diesel/nav/regions.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 class NavNode : public rclcpp::Node {
@@ -213,7 +213,7 @@ class NavNode : public rclcpp::Node {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 int main(int argc, char** argv) {
     rclcpp::init(argc, argv);

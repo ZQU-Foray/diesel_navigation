@@ -22,7 +22,7 @@
 #include "diesel/nav/costmap_view.hpp"
 #include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 分层代价图：把静态层、禁行层、膨胀层、动态层叠成一张**可读快照**。
@@ -124,6 +124,6 @@ class Costmap : public CostmapView {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__COSTMAP_HPP_

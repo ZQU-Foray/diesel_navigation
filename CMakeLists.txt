@@ -16,7 +16,7 @@ add_library(diesel_navigation
   src/params.cpp
   src/regions.cpp
 )
-add_library(Foray::Navigation ALIAS diesel_navigation)
+add_library(diesel::Navigation ALIAS diesel_navigation)
 
 target_include_directories(diesel_navigation
   PUBLIC
@@ -138,4 +138,4 @@ endif()
 include(GNUInstallDirs)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS diesel_navigation EXPORT diesel_navigationTargets)
-install(EXPORT diesel_navigationTargets NAMESPACE Foray:: DESTINATION lib/cmake/diesel_navigation)
+install(EXPORT diesel_navigationTargets NAMESPACE diesel:: DESTINATION lib/cmake/diesel_navigation)

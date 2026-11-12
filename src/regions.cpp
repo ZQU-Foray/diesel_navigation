@@ -18,14 +18,14 @@
 // 按车体半径（0.32 m）膨胀之后更糟：整条隧道连同两侧都被算成致死，A* 只能绕整个高地。
 // 所以需要一层「人来标」的信息，而且是**能覆盖原图致死格**的那种。
 
-#include "foray/nav/regions.hpp"
+#include "diesel/nav/regions.hpp"
 
 #include <cctype>
 #include <cmath>
 #include <fstream>
 #include <sstream>
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 bool RectRegion::contains(const Vec2& point) const {
@@ -141,4 +141,4 @@ void apply_preferred_regions(Costmap& map, const CostmapView& source,
 }
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel

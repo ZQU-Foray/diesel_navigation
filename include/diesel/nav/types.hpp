@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 场地平面上的点，单位米，坐标系为**场地坐标系**（原点对齐规则定义的原点，不是开机位置）。
@@ -179,6 +179,6 @@ inline const char* to_string(UnitKind kind) {
 }
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__TYPES_HPP_

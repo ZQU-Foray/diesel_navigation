@@ -22,7 +22,7 @@
 #include "diesel/nav/regions.hpp"
 #include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 导航引擎：把「规划 → 跟踪 → 判到达 → 必要时重规划」串成一条主循环。
@@ -174,6 +174,6 @@ class NavEngine {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__NAV_ENGINE_HPP_

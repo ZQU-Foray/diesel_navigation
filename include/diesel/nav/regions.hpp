@@ -21,7 +21,7 @@
 #include "diesel/nav/costmap.hpp"
 #include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 地图上的一块矩形区域（世界坐标，米）。
@@ -56,6 +56,6 @@ void apply_preferred_regions(Costmap& map, const CostmapView& source,
                              const std::vector<RectRegion>& regions);
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__REGIONS_HPP_

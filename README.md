@@ -72,9 +72,9 @@
 本仓只依赖标准库与 CMake，**不需要 ROS**：
 
 ```bash
-cmake -S . -B ~/.cache/foray-navigation-build -DCMAKE_BUILD_TYPE=Release
-cmake --build ~/.cache/foray-navigation-build -j"$(nproc)"
-ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
+cmake -S . -B ~/.cache/diesel-navigation-build -DCMAKE_BUILD_TYPE=Release
+cmake --build ~/.cache/diesel-navigation-build -j"$(nproc)"
+ctest --test-dir ~/.cache/diesel-navigation-build --output-on-failure
 ```
 
 > 本仓位于 SMB 共享盘时构建目录必须放本地盘（共享盘不支持符号链接）。
@@ -103,7 +103,7 @@ ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
                 --regions config/rmul_2027.regions.txt --csv fuzz.csv
 ```
 
-> `<build>` 指上面 `cmake --build` 用的那个构建目录，例如 `~/.cache/foray-navigation-build`。
+> `<build>` 指上面 `cmake --build` 用的那个构建目录，例如 `~/.cache/diesel-navigation-build`。
 
 ### 参数
 
@@ -192,10 +192,10 @@ python3 ros/smoke_nav_node.py     # 5 秒内收到 |v| > 0.1 m/s 即 PASS
 
 | 头文件 | 命名空间 | 公共类型 / 函数 | 契约 |
 |---|---|---|---|
-| `foray/nav/types.hpp` | `diesel::nav` | `Vec2` `Pose2` `Side` **`UnitKind`** `Capability` `TraversalProfile` `NavGoal` `NavStatus` `NavError` `Path` `DynamicObstacle` `VelocityCommand` | 失败必须带原因；动态障碍只按几何消费，**不做敌我识别**；兵种只换数值、不改接口 |
-| `foray/nav/costmap_view.hpp` | `diesel::nav` | `CostmapView` | 只读快照；代价**数值越小越划算**；`data()/stride()` 供热路径直接寻址 |
-| `foray/nav/planner.hpp` | `diesel::nav` | `GlobalPlanner` `PlanningOptions` | 纯函数式；代价必须当**边权重**用；必须遵守预算，不许阻塞 |
-| `foray/nav/controller.hpp` | `diesel::nav` | `LocalController` | 有状态；输出前必须限幅；**到达判定由状态机负责** |
+| `diesel/nav/types.hpp` | `diesel::nav` | `Vec2` `Pose2` `Side` **`UnitKind`** `Capability` `TraversalProfile` `NavGoal` `NavStatus` `NavError` `Path` `DynamicObstacle` `VelocityCommand` | 失败必须带原因；动态障碍只按几何消费，**不做敌我识别**；兵种只换数值、不改接口 |
+| `diesel/nav/costmap_view.hpp` | `diesel::nav` | `CostmapView` | 只读快照；代价**数值越小越划算**；`data()/stride()` 供热路径直接寻址 |
+| `diesel/nav/planner.hpp` | `diesel::nav` | `GlobalPlanner` `PlanningOptions` | 纯函数式；代价必须当**边权重**用；必须遵守预算，不许阻塞 |
+| `diesel/nav/controller.hpp` | `diesel::nav` | `LocalController` | 有状态；输出前必须限幅；**到达判定由状态机负责** |
 
 ## 纪律
 

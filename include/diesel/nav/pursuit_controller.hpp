@@ -17,7 +17,7 @@
 
 #include "diesel/nav/controller.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 纯追踪（全向底盘）参数。
@@ -116,6 +116,6 @@ class PursuitController : public LocalController {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 #endif // DIESEL__NAV__PURSUIT_CONTROLLER_HPP_
