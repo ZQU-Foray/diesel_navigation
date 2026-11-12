@@ -27,16 +27,16 @@
 #include <string>
 #include <vector>
 
-#include "foray/nav/grid_map.hpp"
-#include "foray/nav/nav_engine.hpp"
-#include "foray/nav/params.hpp"
+#include "diesel/nav/grid_map.hpp"
+#include "diesel/nav/nav_engine.hpp"
+#include "diesel/nav/params.hpp"
 
 namespace {
 
 constexpr double kDt = 0.05;
 
 /// 每格到最近致死格的距离（倒角近似）。诊断用，精度够。
-std::vector<float> make_clearance(const foray::nav::CostmapView& map) {
+std::vector<float> make_clearance(const diesel::nav::CostmapView& map) {
     const int w = map.width();
     const int h = map.height();
     const double res = map.resolution();
@@ -49,7 +49,7 @@ std::vector<float> make_clearance(const foray::nav::CostmapView& map) {
     };
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
-            if (map.cost_at(x, y) == foray::nav::kCostLethal) {
+            if (map.cost_at(x, y) == diesel::nav::kCostLethal) {
                 field[at(x, y)] = 0.0f;
             }
         }
@@ -83,8 +83,8 @@ std::vector<float> make_clearance(const foray::nav::CostmapView& map) {
     return field;
 }
 
-float clearance_at(const foray::nav::CostmapView& map, const std::vector<float>& field,
-                   const foray::nav::Vec2& p) {
+float clearance_at(const diesel::nav::CostmapView& map, const std::vector<float>& field,
+                   const diesel::nav::Vec2& p) {
     const int x = static_cast<int>(std::floor((p.x - map.origin().x) / map.resolution()));
     const int y = static_cast<int>(std::floor((p.y - map.origin().y) / map.resolution()));
     if (x < 0 || y < 0 || x >= map.width() || y >= map.height()) {
@@ -95,8 +95,8 @@ float clearance_at(const foray::nav::CostmapView& map, const std::vector<float>&
 }
 
 /// 点到线段的距离（世界坐标，米）。
-double point_segment_distance(const foray::nav::Vec2& p, const foray::nav::Vec2& a,
-                              const foray::nav::Vec2& b) {
+double point_segment_distance(const diesel::nav::Vec2& p, const diesel::nav::Vec2& a,
+                              const diesel::nav::Vec2& b) {
     const double dx = b.x - a.x;
     const double dy = b.y - a.y;
     const double length_sq = dx * dx + dy * dy;
@@ -115,14 +115,14 @@ double point_segment_distance(const foray::nav::Vec2& p, const foray::nav::Vec2&
 }
 
 /// 车实际位置到规划路径的最近距离（跟踪误差）。
-double distance_to_path(const foray::nav::Path& path, const foray::nav::Vec2& p) {
+double distance_to_path(const diesel::nav::Path& path, const diesel::nav::Vec2& p) {
     if (path.size() == 1) {
         return std::hypot(p.x - path[0].x, p.y - path[0].y);
     }
     double best = 1e9;
     for (size_t i = 1; i < path.size(); ++i) {
-        const foray::nav::Vec2 a{path[i - 1].x, path[i - 1].y};
-        const foray::nav::Vec2 b{path[i].x, path[i].y};
+        const diesel::nav::Vec2 a{path[i - 1].x, path[i - 1].y};
+        const diesel::nav::Vec2 b{path[i].x, path[i].y};
         const double d = point_segment_distance(p, a, b);
         if (d < best) {
             best = d;
@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     if (!map.load_from_yaml(yaml, &error)) {
         std::printf("地图加载失败: %s\n", error.c_str());
@@ -191,38 +191,38 @@ int main(int argc, char** argv) {
     }
     const std::vector<float> field = make_clearance(map);
 
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     if (!params_path.empty()) {
         std::string params_error;
-        if (!foray::nav::load_params(params_path, robot_path, &params, &params_error)) {
+        if (!diesel::nav::load_params(params_path, robot_path, &params, &params_error)) {
             std::printf("参数加载失败: %s\n", params_error.c_str());
             return 1;
         }
     } else if (!robot_path.empty()) {
         std::string params_error;
-        if (!foray::nav::load_params_file(robot_path, &params, &params_error)) {
+        if (!diesel::nav::load_params_file(robot_path, &params, &params_error)) {
             std::printf("参数加载失败: %s\n", params_error.c_str());
             return 1;
         }
     }
 
-    foray::nav::NavEngine engine(params.astar, params.pursuit);
+    diesel::nav::NavEngine engine(params.astar, params.pursuit);
     engine.options() = params.engine;
     if (!regions_path.empty()) {
-        std::vector<foray::nav::RectRegion> regions;
+        std::vector<diesel::nav::RectRegion> regions;
         std::string regions_error;
-        if (!foray::nav::load_regions_file(regions_path, &regions, &regions_error)) {
+        if (!diesel::nav::load_regions_file(regions_path, &regions, &regions_error)) {
             std::printf("区域表加载失败: %s\n", regions_error.c_str());
             return 1;
         }
         engine.set_preferred_regions(regions);
         std::printf("区域表: %zu 块（隧道标为偏好）\n", regions.size());
     }
-    foray::nav::NavGoal goal;
-    goal.pose = foray::nav::Pose2{gx, gy, 0.0};
-    foray::nav::Pose2 pose{sx, sy, 0.0};
-    const foray::nav::NavError plan_error = engine.set_goal(map, goal, pose);
-    if (plan_error != foray::nav::NavError::kNone) {
+    diesel::nav::NavGoal goal;
+    goal.pose = diesel::nav::Pose2{gx, gy, 0.0};
+    diesel::nav::Pose2 pose{sx, sy, 0.0};
+    const diesel::nav::NavError plan_error = engine.set_goal(map, goal, pose);
+    if (plan_error != diesel::nav::NavError::kNone) {
         std::printf("规划失败 err=%d\n", static_cast<int>(plan_error));
         return 1;
     }
@@ -240,12 +240,12 @@ int main(int argc, char** argv) {
     int frame = 0;
     double max_path_error = 0.0;
     for (; frame < 4000; ++frame) {
-        foray::nav::VelocityCommand command{};
-        const foray::nav::NavError err = engine.step(map, pose, kDt, &command);
-        const float clear = clearance_at(map, field, foray::nav::Vec2{pose.x, pose.y});
+        diesel::nav::VelocityCommand command{};
+        const diesel::nav::NavError err = engine.step(map, pose, kDt, &command);
+        const float clear = clearance_at(map, field, diesel::nav::Vec2{pose.x, pose.y});
         // 跟踪误差：车实际位置到「规划路径」的最近距离。
         // 这是改控制器时的尺子——只看「到没到」看不出切角有没有变好。
-        const double path_err = distance_to_path(engine.path(), foray::nav::Vec2{pose.x, pose.y});
+        const double path_err = distance_to_path(engine.path(), diesel::nav::Vec2{pose.x, pose.y});
         if (path_err > max_path_error) {
             max_path_error = path_err;
         }
@@ -268,14 +268,14 @@ int main(int argc, char** argv) {
                         static_cast<int>(engine.status()), engine.replan_count(),
                         zero_streak >= 5 ? "  <-- stalled" : "");
         }
-        if (engine.status() == foray::nav::NavStatus::kFailed) {
+        if (engine.status() == diesel::nav::NavStatus::kFailed) {
             std::printf("FAILED err=%d at frame %d\n", static_cast<int>(err), frame);
             break;
         }
         pose.x += command.vx * kDt;
         pose.y += command.vy * kDt;
         pose.yaw += command.omega * kDt;
-        if (engine.status() == foray::nav::NavStatus::kReached) {
+        if (engine.status() == diesel::nav::NavStatus::kReached) {
             std::printf("REACHED at frame %d (%.2f s)\n", frame, frame * kDt);
             break;
         }

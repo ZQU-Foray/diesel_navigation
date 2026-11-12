@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__NAV_ENGINE_HPP_
-#define FORAY__NAV__NAV_ENGINE_HPP_
+#ifndef DIESEL__NAV__NAV_ENGINE_HPP_
+#define DIESEL__NAV__NAV_ENGINE_HPP_
 
-#include "foray/nav/astar_planner.hpp"
-#include "foray/nav/costmap.hpp"
-#include "foray/nav/costmap_view.hpp"
-#include "foray/nav/pursuit_controller.hpp"
-#include "foray/nav/regions.hpp"
-#include "foray/nav/types.hpp"
+#include "diesel/nav/astar_planner.hpp"
+#include "diesel/nav/costmap.hpp"
+#include "diesel/nav/costmap_view.hpp"
+#include "diesel/nav/pursuit_controller.hpp"
+#include "diesel/nav/regions.hpp"
+#include "diesel/nav/types.hpp"
 
 namespace foray {
 namespace nav {
@@ -176,4 +176,4 @@ class NavEngine {
 } // namespace nav
 } // namespace foray
 
-#endif // FORAY__NAV__NAV_ENGINE_HPP_
+#endif // DIESEL__NAV__NAV_ENGINE_HPP_

@@ -34,7 +34,7 @@
 - 删除用户提供的源材料
 - 破坏性 Git 操作（`reset --hard` / `push --force` / 非必要 `rebase`）
 - 引入无必要依赖
-- **违反 `.foray-layer` 声明的依赖方向**
+- **违反 `.diesel-layer` 声明的依赖方向**
 
 ## Git Workflow
 

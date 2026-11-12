@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__ASTAR_PLANNER_HPP_
-#define FORAY__NAV__ASTAR_PLANNER_HPP_
+#ifndef DIESEL__NAV__ASTAR_PLANNER_HPP_
+#define DIESEL__NAV__ASTAR_PLANNER_HPP_
 
 #include <vector>
 
-#include "foray/nav/planner.hpp"
+#include "diesel/nav/planner.hpp"
 
 namespace foray {
 namespace nav {
@@ -66,4 +66,4 @@ class AstarPlanner : public GlobalPlanner {
 } // namespace nav
 } // namespace foray
 
-#endif // FORAY__NAV__ASTAR_PLANNER_HPP_
+#endif // DIESEL__NAV__ASTAR_PLANNER_HPP_

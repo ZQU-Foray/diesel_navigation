@@ -92,7 +92,7 @@ Reason:
 
 Alternatives:
 - 保留 terrain_analysis：违反"激光只定位"的纪律
-- 靠视觉判断地形：`foray_vision` 不做地形，且引入新的失效面
+- 靠视觉判断地形：`diesel_vision` 不做地形，且引入新的失效面
 
 Rejected:
 - 让规划器"试探性"通行 —— 单败淘汰赛制下不可接受
@@ -106,7 +106,7 @@ Date: 2026-10-27
 Context: 参考基线局部代价图挂了 `pb_nav2_plugins` 的 `IntensityVoxelLayer`
 （用激光强度生成障碍层），与组织算法结构冲突。
 
-Decision: **不引入 intensity 体素层；动态障碍只来自 `foray_vision` 的 `WorldSnapshot`。**
+Decision: **不引入 intensity 体素层；动态障碍只来自 `diesel_vision` 的 `WorldSnapshot`。**
 
 Reason:
 - `foray_docs/algorithm_structure.md` §1.4 明确：激光不参与避障/地形/代价地图；
@@ -134,7 +134,7 @@ Decision: 本仓**不假设任何机间共享状态**，也**不承担敌我识�
 
 Reason:
 - 没有通信就没有可信的队友位姿，本仓无法从动态物体集合里"减掉己方"；
-- 敌我识别归属 `foray_vision`，导航只负责"往哪儿走、怎么绕"；
+- 敌我识别归属 `diesel_vision`，导航只负责"往哪儿走、怎么绕"；
   本仓一旦解释语义，上游检测的失效就会直接变成规划的失效，职责边界也随之模糊；
 - 若假设"它会动开"而留窄间隙，一旦对方不动就撞——单败淘汰下不可接受；
 - 完全离线化后，本仓可回放、可单测，不依赖其它车的在线状态，也不依赖上游检测质量。
@@ -312,7 +312,7 @@ Decision: **参数出代码，两级覆盖**——`config/shared.yaml`（本仓�
 
 Reason:
 - 调参是实车阶段最高频的动作，参数必须能改而不重编译；
-- 「不引第三方库」是本仓纪律（CMakeLists 与 `.foray-layer` 都写着只依赖标准库），
+- 「不引第三方库」是本仓纪律（CMakeLists 与 `.diesel-layer` 都写着只依赖标准库），
   而这里要的全部能力就是「一行一个键值」——引一个 YAML 库属于为了 5% 的功能扛 100% 的依赖；
 - **静默忽略未知键是最贵的错误**：改了 `robot_radiu`，程序照跑，人却去找算法的错。
   所以宁可在启动时崩，也不要「看起来一切正常」；
@@ -460,7 +460,7 @@ Rejected:
 
 Date: 2026-11-10
 
-Context: 实机验证的前置是「车上能跑」——`NavEngine` 目前是个库，没有节点、话题、参数，`foray_robots`
+Context: 实机验证的前置是「车上能跑」——`NavEngine` 目前是个库，没有节点、话题、参数，`diesel_robots`
 装配根拿不到任何东西。但本仓的纪律是「核心算法只依赖标准库、能脱 ROS 单测」，不能为了上车把它变成 ROS 包。
 
 Decision: **适配层独立成一个可选目标**（`ros/nav_node.cpp`）：
@@ -470,7 +470,7 @@ CMake 里 `find_package(rclcpp QUIET)`，**找不到就整块跳过**，纯 CMak
 
 Reason:
 - **库保持纯净**：CI 的两套构建（纯 CMake、`colcon build`）都能过；没有 ROS 的同学仍能跑全部测试；
-- 话题选 `odom` 而不是 TF：`foray_localization` 还没接，先保证「地图+位姿+目标→速度」这条链路；
+- 话题选 `odom` 而不是 TF：`diesel_localization` 还没接，先保证「地图+位姿+目标→速度」这条链路；
   接定位时只换这一处，不动引擎；
 - 地图用 `transient_local`：车上节点可能比地图服务晚起，锁存能让它补上上一张图（否则要等下一次发布）。
 

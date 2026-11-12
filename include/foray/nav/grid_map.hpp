@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__GRID_MAP_HPP_
-#define FORAY__NAV__GRID_MAP_HPP_
+#ifndef DIESEL__NAV__GRID_MAP_HPP_
+#define DIESEL__NAV__GRID_MAP_HPP_
 
 #include <cstdint>
 #include <string>
 #include <vector>
 
-#include "foray/nav/costmap_view.hpp"
-#include "foray/nav/types.hpp"
+#include "diesel/nav/costmap_view.hpp"
+#include "diesel/nav/types.hpp"
 
 namespace foray {
 namespace nav {
@@ -120,4 +120,4 @@ bool parse_map_meta(const std::string& yaml_text, MapMeta* meta, std::string* er
 } // namespace nav
 } // namespace foray
 
-#endif // FORAY__NAV__GRID_MAP_HPP_
+#endif // DIESEL__NAV__GRID_MAP_HPP_

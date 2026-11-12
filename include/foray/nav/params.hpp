@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__PARAMS_HPP_
-#define FORAY__NAV__PARAMS_HPP_
+#ifndef DIESEL__NAV__PARAMS_HPP_
+#define DIESEL__NAV__PARAMS_HPP_
 
 #include <string>
 
-#include "foray/nav/astar_planner.hpp"
-#include "foray/nav/nav_engine.hpp"
-#include "foray/nav/pursuit_controller.hpp"
+#include "diesel/nav/astar_planner.hpp"
+#include "diesel/nav/nav_engine.hpp"
+#include "diesel/nav/pursuit_controller.hpp"
 
 namespace foray {
 namespace nav {
@@ -63,4 +63,4 @@ bool validate_params(const NavParams& params, std::string* error);
 } // namespace nav
 } // namespace foray
 
-#endif // FORAY__NAV__PARAMS_HPP_
+#endif // DIESEL__NAV__PARAMS_HPP_

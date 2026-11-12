@@ -2,7 +2,7 @@
 #
 # 用法（VM 里，先 colcon build）：
 #   source /opt/ros/humble/setup.bash && source install/setup.bash
-#   ./install/foray_navigation/lib/foray_navigation/nav_node --ros-args \
+#   ./install/diesel_navigation/lib/diesel_navigation/nav_node --ros-args \
 #       -p params_file:=$PWD/config/shared.yaml -p robot_file:=$PWD/config/rmul_2027.yaml \
 #       -p regions_file:=$PWD/config/rmul_2027.regions.txt &
 #   python3 ros/smoke_test.py

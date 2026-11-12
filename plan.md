@@ -22,16 +22,16 @@
 - [x] **ROS 2 适配层（2026-11-10）**：`ros/nav_node.cpp`（**可选构建**：找不到 rclcpp 就跳过，
       核心库仍只依赖标准库）。订阅 `map` / `odom` / `goal_pose`，发布 `cmd_vel`；
       Ubuntu 22.04 + Humble 上 `colcon build` 通过，喂地图+位姿+目标的集成冒烟 **PASS**。
-      未接 TF / `foray_localization`（现在直接吃 `odom`）。
+      未接 TF / `diesel_localization`（现在直接吃 `odom`）。
 
 ### 原基线清理（承接 fork 分支）
 
 - [ ] 清理 fork：删除 terrain_analysis 等已定删除项
 - [x] 把导航参数抽出为 `shared.yaml` + `<robot>.yaml` 两级（2026-11-10：
       `config/shared.yaml` + `config/rmul_2027.yaml`，`params` 模块 + `params_test`，两个工具都能 `--params/--robot`）
-- [ ] 接 `foray_localization` 的位姿与地图（替代当前直连）
-- [ ] 接 `foray_vision` 的动态障碍（替代自建障碍源）
-- [ ] 拆出 `foray_robots` 装配根，本仓只留算法
+- [ ] 接 `diesel_localization` 的位姿与地图（替代当前直连）
+- [ ] 接 `diesel_vision` 的动态障碍（替代自建障碍源）
+- [ ] 拆出 `diesel_robots` 装配根，本仓只留算法
 
 ## 当前 Agent State
 
@@ -51,7 +51,7 @@ risk level:    L1（纯文档，无代码改动）
 ## 模糊点与待确认项
 
 - **2027 赛季不允许机间通信**（已落进设计与决策）：本仓不假设共享状态，
-  动态障碍只按几何消费；敌我识别属 `foray_vision`，本仓不参与。
+  动态障碍只按几何消费；敌我识别属 `diesel_vision`，本仓不参与。
   仍需队里定：**三台车抢同一条走廊**时如何赛前分工（YAML 写死）
 - **隧道尺寸已核（2026-11-10）**：通道净宽约 0.82 m、穿过的高地墙厚约 0.44 m、净高 250 mm；
   **高地坡道坡度、工作台高度**仍未查到。

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__REGIONS_HPP_
-#define FORAY__NAV__REGIONS_HPP_
+#ifndef DIESEL__NAV__REGIONS_HPP_
+#define DIESEL__NAV__REGIONS_HPP_
 
 #include <string>
 #include <vector>
 
-#include "foray/nav/costmap.hpp"
-#include "foray/nav/types.hpp"
+#include "diesel/nav/costmap.hpp"
+#include "diesel/nav/types.hpp"
 
 namespace foray {
 namespace nav {
@@ -58,4 +58,4 @@ void apply_preferred_regions(Costmap& map, const CostmapView& source,
 } // namespace nav
 } // namespace foray
 
-#endif // FORAY__NAV__REGIONS_HPP_
+#endif // DIESEL__NAV__REGIONS_HPP_

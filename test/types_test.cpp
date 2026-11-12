@@ -17,7 +17,7 @@
 #include <cstdio>
 #include <cstring>
 
-#include "foray/nav/types.hpp"
+#include "diesel/nav/types.hpp"
 
 namespace {
 
@@ -31,30 +31,30 @@ void check(bool condition, const char* what) {
 }
 
 void test_default_is_sentinel() {
-    foray::nav::Capability cap;
-    check(cap.kind == foray::nav::UnitKind::kSentinel, "default kind is sentinel");
+    diesel::nav::Capability cap;
+    check(cap.kind == diesel::nav::UnitKind::kSentinel, "default kind is sentinel");
     check(!cap.can_climb_highland, "sentinel cannot climb highland by default");
 }
 
 void test_kind_strings() {
-    check(std::strcmp(foray::nav::to_string(foray::nav::UnitKind::kSentinel), "sentinel") == 0,
+    check(std::strcmp(diesel::nav::to_string(diesel::nav::UnitKind::kSentinel), "sentinel") == 0,
           "sentinel string");
-    check(std::strcmp(foray::nav::to_string(foray::nav::UnitKind::kInfantry), "infantry") == 0,
+    check(std::strcmp(diesel::nav::to_string(diesel::nav::UnitKind::kInfantry), "infantry") == 0,
           "infantry string");
-    check(std::strcmp(foray::nav::to_string(foray::nav::UnitKind::kHeavy), "heavy") == 0,
+    check(std::strcmp(diesel::nav::to_string(diesel::nav::UnitKind::kHeavy), "heavy") == 0,
           "heavy string");
 }
 
 /// 同一套接口换数值就能表达另一个兵种——这是本次预留要证明的事。
 void test_other_kinds_fit_same_interface() {
-    foray::nav::TraversalProfile infantry;
-    infantry.capability.kind = foray::nav::UnitKind::kInfantry;
+    diesel::nav::TraversalProfile infantry;
+    infantry.capability.kind = diesel::nav::UnitKind::kInfantry;
     infantry.capability.min_passable_width = 0.60;
     infantry.capability.max_slope_deg = 15.0;
     infantry.capability.can_climb_highland = true;
 
-    foray::nav::TraversalProfile heavy;
-    heavy.capability.kind = foray::nav::UnitKind::kHeavy;
+    diesel::nav::TraversalProfile heavy;
+    heavy.capability.kind = diesel::nav::UnitKind::kHeavy;
     heavy.capability.min_passable_width = 0.80;
     heavy.capability.max_slope_deg = 10.0;
     heavy.capability.can_climb_highland = true;

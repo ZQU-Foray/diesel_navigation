@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__CONTROLLER_HPP_
-#define FORAY__NAV__CONTROLLER_HPP_
+#ifndef DIESEL__NAV__CONTROLLER_HPP_
+#define DIESEL__NAV__CONTROLLER_HPP_
 
-#include "foray/nav/types.hpp"
+#include "diesel/nav/types.hpp"
 
 namespace foray {
 namespace nav {
@@ -58,4 +58,4 @@ class LocalController {
 } // namespace nav
 } // namespace foray
 
-#endif // FORAY__NAV__CONTROLLER_HPP_
+#endif // DIESEL__NAV__CONTROLLER_HPP_

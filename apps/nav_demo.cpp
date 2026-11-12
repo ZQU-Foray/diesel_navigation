@@ -27,10 +27,10 @@
 #include <string>
 #include <vector>
 
-#include "foray/nav/costmap.hpp"
-#include "foray/nav/grid_map.hpp"
-#include "foray/nav/nav_engine.hpp"
-#include "foray/nav/params.hpp"
+#include "diesel/nav/costmap.hpp"
+#include "diesel/nav/grid_map.hpp"
+#include "diesel/nav/nav_engine.hpp"
+#include "diesel/nav/params.hpp"
 
 namespace {
 
@@ -40,15 +40,15 @@ constexpr int kPrintEvery = 40; // 每 2 s 打一行
 
 /// 造一张 4 m × 3 m、0.05 m/格 的地图：中间一堵竖墙，靠上留一个 1.4 m 的口。
 /// 口只有 0.5 m 时，车体半径 0.2 m 的车根本过不去——这是真实约束，不是 bug。
-foray::nav::Costmap make_demo_map() {
+diesel::nav::Costmap make_demo_map() {
     constexpr int kW = 80;
     constexpr int kH = 60;
-    foray::nav::Costmap map;
+    diesel::nav::Costmap map;
     std::string error;
-    map.init(kW, kH, 0.05, foray::nav::Vec2{0.0, 0.0}, &error);
+    map.init(kW, kH, 0.05, diesel::nav::Vec2{0.0, 0.0}, &error);
     for (int iy = 0; iy < kH; ++iy) {
         for (int ix = 0; ix < kW; ++ix) {
-            map.set_cost(ix, iy, foray::nav::kCostFree);
+            map.set_cost(ix, iy, diesel::nav::kCostFree);
         }
     }
     // 竖墙：x ∈ [1.9, 2.1] m，只在 y ∈ [0, 2.2) 内是墙，其余留口
@@ -57,7 +57,7 @@ foray::nav::Costmap make_demo_map() {
             const double x = 0.025 + 0.05 * ix;
             const double y = 0.025 + 0.05 * iy;
             if (x >= 1.9 && x <= 2.1 && y < 1.6) {
-                map.set_cost(ix, iy, foray::nav::kCostLethal);
+                map.set_cost(ix, iy, diesel::nav::kCostLethal);
             }
         }
     }
@@ -109,9 +109,9 @@ int main(int argc, char** argv) {
         }
     }
 
-    foray::nav::GridMap loaded;
-    foray::nav::Costmap demo;
-    const foray::nav::CostmapView* map = nullptr;
+    diesel::nav::GridMap loaded;
+    diesel::nav::Costmap demo;
+    const diesel::nav::CostmapView* map = nullptr;
 
     if (!yaml_path.empty()) {
         std::string error;
@@ -126,27 +126,27 @@ int main(int argc, char** argv) {
     }
 
     // 参数：命令行给了就读文件，没给就用编译期默认值（与解析器默认保持一致）。
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     if (!params_path.empty()) {
         std::string params_error;
-        if (!foray::nav::load_params(params_path, robot_path, &params, &params_error)) {
+        if (!diesel::nav::load_params(params_path, robot_path, &params, &params_error)) {
             std::printf("参数加载失败: %s\n", params_error.c_str());
             return 1;
         }
     } else if (!robot_path.empty()) {
         std::string params_error;
-        if (!foray::nav::load_params_file(robot_path, &params, &params_error)) {
+        if (!diesel::nav::load_params_file(robot_path, &params, &params_error)) {
             std::printf("参数加载失败: %s\n", params_error.c_str());
             return 1;
         }
     }
 
-    foray::nav::NavEngine engine(params.astar, params.pursuit);
+    diesel::nav::NavEngine engine(params.astar, params.pursuit);
     engine.options() = params.engine;
     if (!regions_path.empty()) {
-        std::vector<foray::nav::RectRegion> regions;
+        std::vector<diesel::nav::RectRegion> regions;
         std::string regions_error;
-        if (!foray::nav::load_regions_file(regions_path, &regions, &regions_error)) {
+        if (!diesel::nav::load_regions_file(regions_path, &regions, &regions_error)) {
             std::printf("区域表加载失败: %s\n", regions_error.c_str());
             return 1;
         }
@@ -158,12 +158,12 @@ int main(int argc, char** argv) {
                     params.engine.max_replans, params_path.c_str(), robot_path.empty() ? "" : " + ",
                     robot_path.c_str());
     }
-    const foray::nav::Pose2 start{0.5, 0.5, 0.0};
-    foray::nav::NavGoal goal;
-    goal.pose = foray::nav::Pose2{goal_x, goal_y, 0.0};
+    const diesel::nav::Pose2 start{0.5, 0.5, 0.0};
+    diesel::nav::NavGoal goal;
+    goal.pose = diesel::nav::Pose2{goal_x, goal_y, 0.0};
 
-    const foray::nav::NavError plan_error = engine.set_goal(*map, goal, start);
-    if (plan_error != foray::nav::NavError::kNone) {
+    const diesel::nav::NavError plan_error = engine.set_goal(*map, goal, start);
+    if (plan_error != diesel::nav::NavError::kNone) {
         std::printf("规划失败，原因码 %d\n", static_cast<int>(plan_error));
         return 1;
     }
@@ -171,14 +171,14 @@ int main(int argc, char** argv) {
                 map->width() * map->resolution(), map->height() * map->resolution(), start.x,
                 start.y, goal.pose.x, goal.pose.y, engine.path().size());
 
-    foray::nav::Pose2 pose = start;
+    diesel::nav::Pose2 pose = start;
     double travelled = 0.0;
     int step = 0;
     for (; step < kMaxSteps; ++step) {
-        foray::nav::VelocityCommand command{};
-        const foray::nav::NavError step_error = engine.step(*map, pose, kDt, &command);
-        if (step_error != foray::nav::NavError::kNone &&
-            engine.status() == foray::nav::NavStatus::kFailed) {
+        diesel::nav::VelocityCommand command{};
+        const diesel::nav::NavError step_error = engine.step(*map, pose, kDt, &command);
+        if (step_error != diesel::nav::NavError::kNone &&
+            engine.status() == diesel::nav::NavStatus::kFailed) {
             std::printf("失败，原因码 %d（第 %d 步）\n", static_cast<int>(step_error), step);
             break;
         }
@@ -193,15 +193,15 @@ int main(int argc, char** argv) {
             std::printf("t=%5.2fs  位置 (%5.2f, %5.2f)  速度 (%5.2f, %5.2f)  重规划 %d\n",
                         step * kDt, pose.x, pose.y, vx, vy, engine.replan_count());
         }
-        if (engine.status() == foray::nav::NavStatus::kReached) {
+        if (engine.status() == diesel::nav::NavStatus::kReached) {
             break;
         }
     }
 
     const double final_distance = std::hypot(pose.x - goal.pose.x, pose.y - goal.pose.y);
     std::printf("\n结果：%s\n",
-                engine.status() == foray::nav::NavStatus::kReached ? "到达" : "未到达");
+                engine.status() == diesel::nav::NavStatus::kReached ? "到达" : "未到达");
     std::printf("  步数 %d（%.2f s），走过 %.2f m，终点误差 %.3f m，重规划 %d 次\n", step,
                 step * kDt, travelled, final_distance, engine.replan_count());
-    return engine.status() == foray::nav::NavStatus::kReached ? 0 : 1;
+    return engine.status() == diesel::nav::NavStatus::kReached ? 0 : 1;
 }
