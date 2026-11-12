@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__PARAMS_HPP_
-#define FORAY__NAV__PARAMS_HPP_
+#ifndef DIESEL__NAV__PARAMS_HPP_
+#define DIESEL__NAV__PARAMS_HPP_
 
 #include <string>
 
-#include "foray/nav/astar_planner.hpp"
-#include "foray/nav/nav_engine.hpp"
-#include "foray/nav/pursuit_controller.hpp"
+#include "diesel/nav/astar_planner.hpp"
+#include "diesel/nav/nav_engine.hpp"
+#include "diesel/nav/pursuit_controller.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 导航参数集合：规划器 / 控制器 / 引擎三层，一次性交给调用方。
@@ -61,6 +61,6 @@ bool load_params(const std::string& shared_path, const std::string& robot_path, 
 bool validate_params(const NavParams& params, std::string* error);
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
-#endif // FORAY__NAV__PARAMS_HPP_
+#endif // DIESEL__NAV__PARAMS_HPP_

@@ -10,10 +10,10 @@
 ├── decision.md              关键工程决策日志
 ├── tree.md                  本文件
 ├── CODEOWNERS               Review 自动分派
-├── .foray-layer             所属层与依赖边界（CI 校验）
+├── .diesel-layer             所属层与依赖边界（CI 校验）
 ├── .clang-format            组织 C/C++ 风格（4 空格、指针靠左、列宽 100）
 ├── .gitignore
-├── CMakeLists.txt           库 foray_navigation + 六个测试 + 两个工具（C++17，零警告）
+├── CMakeLists.txt           库 diesel_navigation + 六个测试 + 两个工具（C++17，零警告）
 ├── package.xml              build_type=cmake，供 colcon 识别
 ├── docs/
 │   ├── nav_architecture.md  寻路框架设计：契约、代价图、语义层、通行档案、验收
@@ -27,7 +27,7 @@
 │   ├── shared.yaml          通用参数：键清单 + 默认值口径（哪些标「待实测」）
 │   ├── rmul_2027.yaml       哨兵 / 2027 赛季覆盖层（只写跟 shared 不一样的）
 │   └── rmul_2027.regions.txt 区域表：隧道（tunnel，可覆盖墙）/ 偏好走廊（preferred）
-├── include/foray/nav/       公共接口（header-only，不依赖 ROS）
+├── include/diesel/nav/       公共接口（header-only，不依赖 ROS）
 │   ├── types.hpp            几何/阵营/兵种/能力/目标/状态/错误码/路径/指令
 │   ├── costmap_view.hpp     代价图只读快照接口 + 代价编码
 │   ├── planner.hpp          全局规划器接口

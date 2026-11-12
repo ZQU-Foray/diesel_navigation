@@ -22,7 +22,7 @@
 - **不做在线 SLAM**：地图是随赛季版本化的离线资产。
 - **激光只用于定位**，不参与代价图、不做地形分析
   （依据 `foray_docs/algorithm_structure.md` §1.4/§1.5）。
-- **不自建障碍感知**：动态障碍由 `foray_vision` 的 `WorldSnapshot` 注入，本仓只消费。
+- **不自建障碍感知**：动态障碍由 `diesel_vision` 的 `WorldSnapshot` 注入，本仓只消费。
 - **不做机间通信与协同避让**（2027 赛季约束，见 §2.1）。
 - **不定义 ROS 话题**：核心是纯 C++，ROS 适配层后续另加。
 
@@ -32,9 +32,9 @@
 
 | 事项 | 归属 | 本仓的接口约定 |
 |---|---|---|
-| 敌我识别（装甲颜色） | `foray_vision` | 不在本仓职责内；只按几何消费障碍 |
-| 动态障碍检测 | `foray_vision` | 只消费几何：位置、外接半径、时间戳 |
-| 定位与地图 | `foray_localization` | 只消费位姿与地图资产 |
+| 敌我识别（装甲颜色） | `diesel_vision` | 不在本仓职责内；只按几何消费障碍 |
+| 动态障碍检测 | `diesel_vision` | 只消费几何：位置、外接半径、时间戳 |
+| 定位与地图 | `diesel_localization` | 只消费位姿与地图资产 |
 | 机间通信 / 协同分工 | 本赛季不允许 | 不假设任何共享状态 |
 
 因为不用机间通信、也不解释敌我，动态障碍层采取**纯几何**取向：
@@ -100,7 +100,7 @@ enum class NavError {            // 失败必须带原因，不许只说"失败"
     kProgressStalled, kRecoveryExhausted
 };
 
-// 动态障碍：本仓只用几何，不解释语义（敌我识别属 foray_vision）
+// 动态障碍：本仓只用几何，不解释语义（敌我识别属 diesel_vision）
 struct DynamicObstacle {
     Vec2      center;
     double    radius;   // 保守外接半径
@@ -114,8 +114,8 @@ struct VelocityCommand { double vx, vy, omega; };   // 全向三轴
 
 | 方向 | 内容 | 约束 |
 |---|---|---|
-| 输入 | `Pose2` + `Timestamp`（自身位姿，来自 `foray_localization`） | 位姿必须带时间戳与置信度，超期不用 |
-| 输入 | `ObstacleSet`（动态障碍，来自 `foray_vision`） | 每个障碍带时间戳；过期障碍按"未知"处理 |
+| 输入 | `Pose2` + `Timestamp`（自身位姿，来自 `diesel_localization`） | 位姿必须带时间戳与置信度，超期不用 |
+| 输入 | `ObstacleSet`（动态障碍，来自 `diesel_vision`） | 每个障碍带时间戳；过期障碍按"未知"处理 |
 | 输入 | `MapAsset` + `TraversalProfile` | 地图版本随赛季绑定，不匹配直接失败 |
 | 输入 | `NavGoal` | 目标落在致命代价格 → 立即 `kGoalInLethal` |
 | 输出 | `VelocityCommand` | 幅值限幅 + 变化率限幅；**指令超时归零由执行器侧兜底**（L2 急停硬路径） |
@@ -214,7 +214,7 @@ regions:
 > 中央高地把战场切成两条走廊——**这是哨兵寻路的主要拓扑特征**，测试用例必须覆盖。
 > 坡道与高地平台只作为"不可通行"标注存在，不做爬坡判定。
 
-通行档案放 YAML（`foray_robots` 侧），本仓只消费它，不写死兵种判断。
+通行档案放 YAML（`diesel_robots` 侧），本仓只消费它，不写死兵种判断。
 
 ## 8. 全局寻路
 
@@ -263,7 +263,7 @@ omega   = 可选（enable_rotation）；默认 0，全向底盘靠平移绕行
 ## 11. 参数策略
 
 - 全部进 schema，两级：`shared.yaml`（全兵种）+ `<robot>.yaml`（兵种差异），
-  复用 `foray_platform` 的 `param`；
+  复用 `diesel_platform` 的 `param`；
 - 借来的默认值必须标来源，例：
   ```cpp
   // 来源：pb_omni_pid_pursuit_controller 2025 实机配置；我方车体未标定，待实测
@@ -318,6 +318,6 @@ omega   = 可选（enable_rotation）；默认 0，全向底盘靠平移绕行
 | 项 | 触发条件 |
 |---|---|
 | θ\* 替换 A\* | 实测折线跟随抖动明显 |
-| 动态障碍层接 `WorldSnapshot` | `foray_vision` 契约冻结 |
-| ROS 适配层 | `foray_robots` 装配根就绪 |
+| 动态障碍层接 `WorldSnapshot` | `diesel_vision` 契约冻结 |
+| ROS 适配层 | `diesel_robots` 装配根就绪 |
 | 机间协同避让 | **本赛季不允许机间通信，不做**；赛制放开后再议 |

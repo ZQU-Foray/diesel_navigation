@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "foray/nav/astar_planner.hpp"
+#include "diesel/nav/astar_planner.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -24,9 +24,9 @@
 #include <utility>
 #include <vector>
 
-#include "foray/nav/costmap_view.hpp"
+#include "diesel/nav/costmap_view.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 namespace {
 
@@ -373,4 +373,4 @@ NavError AstarPlanner::plan(const CostmapView& map, const Pose2& start, const Po
 }
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel

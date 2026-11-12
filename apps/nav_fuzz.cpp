@@ -32,11 +32,11 @@
 #include <string>
 #include <vector>
 
-#include "foray/nav/costmap.hpp"
-#include "foray/nav/grid_map.hpp"
-#include "foray/nav/nav_engine.hpp"
-#include "foray/nav/params.hpp"
-#include "foray/nav/regions.hpp"
+#include "diesel/nav/costmap.hpp"
+#include "diesel/nav/grid_map.hpp"
+#include "diesel/nav/nav_engine.hpp"
+#include "diesel/nav/params.hpp"
+#include "diesel/nav/regions.hpp"
 
 namespace {
 
@@ -53,7 +53,7 @@ void usage() {
 }
 
 /// 某点在原图上的净空（到最近致死格的近似距离，米）；用 20 格窗口扫。
-double local_clearance(const foray::nav::CostmapView& map, const foray::nav::Vec2& p,
+double local_clearance(const diesel::nav::CostmapView& map, const diesel::nav::Vec2& p,
                        int window_cells) {
     int cx = 0;
     int cy = 0;
@@ -63,7 +63,7 @@ double local_clearance(const foray::nav::CostmapView& map, const foray::nav::Vec
     double best = 1e9;
     for (int dy = -window_cells; dy <= window_cells; ++dy) {
         for (int dx = -window_cells; dx <= window_cells; ++dx) {
-            if (map.cost_at(cx + dx, cy + dy) == foray::nav::kCostLethal) {
+            if (map.cost_at(cx + dx, cy + dy) == diesel::nav::kCostLethal) {
                 best = std::min(best, std::hypot(dx, dy) * map.resolution());
             }
         }
@@ -71,7 +71,7 @@ double local_clearance(const foray::nav::CostmapView& map, const foray::nav::Vec
     return best;
 }
 
-bool in_regions(const std::vector<foray::nav::RectRegion>& regions, const foray::nav::Vec2& p) {
+bool in_regions(const std::vector<diesel::nav::RectRegion>& regions, const diesel::nav::Vec2& p) {
     for (const auto& r : regions) {
         if (r.contains(p)) {
             return true;
@@ -124,28 +124,28 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     if (!map.load_from_yaml(yaml, &error)) {
         std::printf("地图加载失败: %s\n", error.c_str());
         return 1;
     }
 
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     if (!params_path.empty()) {
-        if (!foray::nav::load_params(params_path, robot_path, &params, &error)) {
+        if (!diesel::nav::load_params(params_path, robot_path, &params, &error)) {
             std::printf("参数加载失败: %s\n", error.c_str());
             return 1;
         }
     } else if (!robot_path.empty()) {
-        if (!foray::nav::load_params_file(robot_path, &params, &error)) {
+        if (!diesel::nav::load_params_file(robot_path, &params, &error)) {
             std::printf("参数加载失败: %s\n", error.c_str());
             return 1;
         }
     }
 
-    std::vector<foray::nav::RectRegion> regions;
-    if (!regions_path.empty() && !foray::nav::load_regions_file(regions_path, &regions, &error)) {
+    std::vector<diesel::nav::RectRegion> regions;
+    if (!regions_path.empty() && !diesel::nav::load_regions_file(regions_path, &regions, &error)) {
         std::printf("区域表加载失败: %s\n", error.c_str());
         return 1;
     }
@@ -153,15 +153,15 @@ int main(int argc, char** argv) {
     // 候选点：整张图上每隔 2 格取一个「净空足够」的格子。
     const int window =
         std::max(1, static_cast<int>(std::ceil(clearance_needed / map.resolution())));
-    std::vector<foray::nav::Pose2> candidates;
+    std::vector<diesel::nav::Pose2> candidates;
     for (int iy = 2; iy < map.height() - 2; iy += 2) {
         for (int ix = 2; ix < map.width() - 2; ix += 2) {
-            foray::nav::Vec2 world{};
+            diesel::nav::Vec2 world{};
             if (!map.grid_to_world(ix, iy, &world)) {
                 continue;
             }
             if (local_clearance(map, world, window) >= clearance_needed) {
-                candidates.push_back(foray::nav::Pose2{world.x, world.y, 0.0});
+                candidates.push_back(diesel::nav::Pose2{world.x, world.y, 0.0});
             }
         }
     }
@@ -189,44 +189,44 @@ int main(int argc, char** argv) {
     double worst_clearance = 1e9;
 
     for (int task = 0; task < count; ++task) {
-        const foray::nav::Pose2 start = candidates[pick(rng)];
-        foray::nav::Pose2 goal = candidates[pick(rng)];
+        const diesel::nav::Pose2 start = candidates[pick(rng)];
+        diesel::nav::Pose2 goal = candidates[pick(rng)];
         // 太近的任务没有意义（原地就到了），重抽一次
         if (std::hypot(start.x - goal.x, start.y - goal.y) < 1.0) {
             goal = candidates[pick(rng)];
         }
 
-        foray::nav::NavEngine engine(params.astar, params.pursuit);
+        diesel::nav::NavEngine engine(params.astar, params.pursuit);
         engine.options() = params.engine;
         engine.set_preferred_regions(regions);
 
-        foray::nav::NavGoal nav_goal;
+        diesel::nav::NavGoal nav_goal;
         nav_goal.pose = goal;
-        const foray::nav::NavError plan_error = engine.set_goal(map, nav_goal, start);
-        if (plan_error != foray::nav::NavError::kNone) {
+        const diesel::nav::NavError plan_error = engine.set_goal(map, nav_goal, start);
+        if (plan_error != diesel::nav::NavError::kNone) {
             if (csv != nullptr) {
                 std::fprintf(csv, "%d,0,0,0.00,0.00,0.00,0,0\n", task);
             }
             continue;
         }
 
-        foray::nav::Pose2 pose = start;
+        diesel::nav::Pose2 pose = start;
         double distance = 0.0;
         double min_clearance = 1e9;
         int wall = 0;
         int step = 0;
         for (; step < kMaxSteps; ++step) {
-            foray::nav::VelocityCommand command{};
-            const foray::nav::NavError err = engine.step(map, pose, kDt, &command);
-            if (err != foray::nav::NavError::kNone &&
-                engine.status() == foray::nav::NavStatus::kFailed) {
+            diesel::nav::VelocityCommand command{};
+            const diesel::nav::NavError err = engine.step(map, pose, kDt, &command);
+            if (err != diesel::nav::NavError::kNone &&
+                engine.status() == diesel::nav::NavStatus::kFailed) {
                 break;
             }
             // 压墙：车心落在原图的致死格上；隧道区域里不算（那是人标过的通道）。
-            const foray::nav::Vec2 here{pose.x, pose.y};
+            const diesel::nav::Vec2 here{pose.x, pose.y};
             if (map.cost_at(static_cast<int>((here.x - map.origin().x) / map.resolution()),
                             static_cast<int>((here.y - map.origin().y) / map.resolution())) ==
-                    foray::nav::kCostLethal &&
+                    diesel::nav::kCostLethal &&
                 !in_regions(regions, here)) {
                 ++wall;
             }
@@ -237,7 +237,7 @@ int main(int argc, char** argv) {
             distance += v * kDt;
             pose.x += command.vx * kDt;
             pose.y += command.vy * kDt;
-            if (engine.status() == foray::nav::NavStatus::kReached) {
+            if (engine.status() == diesel::nav::NavStatus::kReached) {
                 ++reached;
                 break;
             }
@@ -250,7 +250,7 @@ int main(int argc, char** argv) {
         total_seconds += step * kDt;
         if (csv != nullptr) {
             std::fprintf(csv, "%d,%d,%d,%.2f,%.2f,%.2f,%d,%d\n", task,
-                         engine.status() == foray::nav::NavStatus::kReached ? 1 : 0, step,
+                         engine.status() == diesel::nav::NavStatus::kReached ? 1 : 0, step,
                          step * kDt, distance, min_clearance < 1e9 ? min_clearance : 0.0, wall,
                          engine.replan_count());
         }

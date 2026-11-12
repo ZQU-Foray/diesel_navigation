@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__PLANNER_HPP_
-#define FORAY__NAV__PLANNER_HPP_
+#ifndef DIESEL__NAV__PLANNER_HPP_
+#define DIESEL__NAV__PLANNER_HPP_
 
 #include <cstdint>
 
-#include "foray/nav/costmap_view.hpp"
-#include "foray/nav/types.hpp"
+#include "diesel/nav/costmap_view.hpp"
+#include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 规划预算：把"能不能在要求时间内返回"写进契约，而不是留给实现自觉。
@@ -58,6 +58,6 @@ class GlobalPlanner {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
-#endif // FORAY__NAV__PLANNER_HPP_
+#endif // DIESEL__NAV__PLANNER_HPP_

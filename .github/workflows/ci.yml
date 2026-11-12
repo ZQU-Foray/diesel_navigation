@@ -129,7 +129,7 @@ jobs:
         run: pytest -v
 
   # ---- ROS 2 构建与测试 ----
-  # 适用于 colcon 工作空间仓库（如 foray_navigation）。
+  # 适用于 colcon 工作空间仓库（如 diesel_navigation）。
   # 仓库内不存在 package.xml 时整个作业自动跳过，故可安全保留在通用模板里。
   build-ros2:
     runs-on: ubuntu-22.04

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "foray/nav/pursuit_controller.hpp"
+#include "diesel/nav/pursuit_controller.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <vector>
 
-namespace foray {
+namespace diesel {
 namespace nav {
 namespace {
 
@@ -262,4 +262,4 @@ NavError PursuitController::compute(const Pose2& pose, const Path& path, double 
 }
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel

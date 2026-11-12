@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>foray_navigation</name>
+  <name>diesel_navigation</name>
   <version>0.1.0</version>
   <description>Foray L4 导航：静态地图规划 + 动态障碍规避 + 全向控制器（核心算法不依赖 ROS）</description>
   <maintainer email="Heart-0251@outlook.com">Foray Navigation</maintainer>
@@ -13,7 +13,7 @@
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
 
-  <!-- 接上游（foray_interfaces / foray_platform / foray_localization）时在这里补 <depend>，
+  <!-- 接上游（diesel_interfaces / diesel_platform / diesel_localization）时在这里补 <depend>，
        否则 rosdep 拿不到依赖声明（审计 TS-6）。 -->
   <buildtool_depend>cmake</buildtool_depend>
 

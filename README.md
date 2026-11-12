@@ -1,4 +1,4 @@
-# foray_navigation
+# diesel_navigation
 
 > **L4** · owner 角色：导航
 
@@ -15,17 +15,17 @@
 
 | 模块 | 内容 | 测试 |
 |---|---|---|
-| `include/foray/nav/types.hpp` | 几何、阵营、**兵种（`UnitKind`）**、能力档案、目标、状态、错误码、路径、指令 | `types_test` |
-| `include/foray/nav/costmap_view.hpp` | 代价图只读快照 + 代价编码（偏好 / 自由 / 膨胀 / 未知 / 致死） | — |
-| `include/foray/nav/planner.hpp` | 全局规划器接口 + `PlanningOptions`（预算） | — |
-| `include/foray/nav/controller.hpp` | 局部控制器接口（到达判定不在控制器内） | — |
+| `include/diesel/nav/types.hpp` | 几何、阵营、**兵种（`UnitKind`）**、能力档案、目标、状态、错误码、路径、指令 | `types_test` |
+| `include/diesel/nav/costmap_view.hpp` | 代价图只读快照 + 代价编码（偏好 / 自由 / 膨胀 / 未知 / 致死） | — |
+| `include/diesel/nav/planner.hpp` | 全局规划器接口 + `PlanningOptions`（预算） | — |
+| `include/diesel/nav/controller.hpp` | 局部控制器接口（到达判定不在控制器内） | — |
 | `src/grid_map.cpp` | PGM（P5/P2）+ YAML 元数据 → 栅格；world↔grid | `grid_map_test` |
 | `src/costmap.cpp` | 静态 / 禁行 / 膨胀 / 动态 四层代价图 | `costmap_test` |
 | `src/astar_planner.cpp` | A\*（8 邻接、禁斜穿犄角、视线捷径化、偏好代价） | `astar_planner_test` |
 | `src/pursuit_controller.cpp` | 纯追踪（全向、曲率与到点降速、幅值与变化率限幅） | `pursuit_controller_test` |
 | `src/nav_engine.cpp` | **主循环**：规划 → 跟踪 → 判到达 → 偏离/停滞重规划；安全层与护栏层两级膨胀、起终点兜底、安全自检 | `nav_engine_test` |
-| `include/foray/nav/params.hpp` + `src/params.cpp` | **参数出代码**：扁平 YAML 两级覆盖（`shared` → `<robot>`），未知键与越界值直接报错 | `params_test` |
-| `include/foray/nav/regions.hpp` + `src/regions.cpp` | **区域表**：把「图上画成墙、但人能过」的隧道补回代价图（`tunnel` 可覆盖墙，`preferred` 不行） | `regions_test` |
+| `include/diesel/nav/params.hpp` + `src/params.cpp` | **参数出代码**：扁平 YAML 两级覆盖（`shared` → `<robot>`），未知键与越界值直接报错 | `params_test` |
+| `include/diesel/nav/regions.hpp` + `src/regions.cpp` | **区域表**：把「图上画成墙、但人能过」的隧道补回代价图（`tunnel` 可覆盖墙，`preferred` 不行） | `regions_test` |
 | `apps/nav_demo.cpp` | 4 m × 3 m 人造带墙图上跑通「规划→跟踪→到达」；也可读真实 PGM | — |
 | `apps/nav_trace.cpp` | 逐帧诊断：位姿/指令/净空/状态，可导 CSV、可只看卡住段 | — |
 | `apps/nav_plot.cpp` | 把 `nav_trace` 的 CSV 画到地图上，输出 PPM：单条按速度染色，多条按顺序配色（`--csv` 可给多次） | — |
@@ -37,9 +37,9 @@
 
 - **独立恢复状态机（M5 完整形态）**——重规划与「先退再跟」已内建在 `NavEngine` 里，但没有独立的恢复行为层；
 - **端到端任务（M6）**：补给区 → 中央控制区的完整路线与可视化；
-- **ROS 上游接线**：TF / `foray_localization` 的位姿（现在节点直接吃 `odom`）、`foray_vision` 的动态障碍、`foray_robots` 的装配根；
+- **ROS 上游接线**：TF / `diesel_localization` 的位姿（现在节点直接吃 `odom`）、`diesel_vision` 的动态障碍、`diesel_robots` 的装配根；
 - **地图语义层与区域表**（坡道 / 高地 / 台阶边沿 / 补给区）尚未标注（隧道已标）；
-- **fork 基线清理**（删 `terrain_analysis`、接 `foray_localization` / `foray_vision` / `foray_robots`）。
+- **fork 基线清理**（删 `terrain_analysis`、接 `diesel_localization` / `diesel_vision` / `diesel_robots`）。
 
 ### 2026-11-07 引擎落地（NavEngine + 真图压测）
 
@@ -72,9 +72,9 @@
 本仓只依赖标准库与 CMake，**不需要 ROS**：
 
 ```bash
-cmake -S . -B ~/.cache/foray-navigation-build -DCMAKE_BUILD_TYPE=Release
-cmake --build ~/.cache/foray-navigation-build -j"$(nproc)"
-ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
+cmake -S . -B ~/.cache/diesel-navigation-build -DCMAKE_BUILD_TYPE=Release
+cmake --build ~/.cache/diesel-navigation-build -j"$(nproc)"
+ctest --test-dir ~/.cache/diesel-navigation-build --output-on-failure
 ```
 
 > 本仓位于 SMB 共享盘时构建目录必须放本地盘（共享盘不支持符号链接）。
@@ -103,7 +103,7 @@ ctest --test-dir ~/.cache/foray-navigation-build --output-on-failure
                 --regions config/rmul_2027.regions.txt --csv fuzz.csv
 ```
 
-> `<build>` 指上面 `cmake --build` 用的那个构建目录，例如 `~/.cache/foray-navigation-build`。
+> `<build>` 指上面 `cmake --build` 用的那个构建目录，例如 `~/.cache/diesel-navigation-build`。
 
 ### 参数
 
@@ -161,7 +161,7 @@ preferred ...                     # 只想「更想走」、不许覆盖墙的�
 
 ```bash
 source /opt/ros/humble/setup.bash && colcon build
-./install/foray_navigation/lib/foray_navigation/nav_node \
+./install/diesel_navigation/lib/diesel_navigation/nav_node \
   --ros-args -p params_file:=$PWD/config/shared.yaml \
              -p robot_file:=$PWD/config/rmul_2027.yaml \
              -p regions_file:=$PWD/config/rmul_2027.regions.txt
@@ -176,14 +176,14 @@ source /opt/ros/humble/setup.bash && colcon build
 python3 ros/smoke_nav_node.py     # 5 秒内收到 |v| > 0.1 m/s 即 PASS
 ```
 
-> **还没接的**：TF / `foray_localization` 的位姿（现在直接吃 `odom`）、`foray_vision` 的动态障碍、
+> **还没接的**：TF / `diesel_localization` 的位姿（现在直接吃 `odom`）、`diesel_vision` 的动态障碍、
 > 参数动态重配。这些等上游接口定了再接，不然接口会返工。
 
 ## 依赖
 
 | 类型 | 依赖 |
 |---|---|
-| **自研仓** | 上游：`foray_interfaces`（X2）、`foray_platform`（L1/L2）、`foray_localization`（L3） |
+| **自研仓** | 上游：`diesel_interfaces`（X2）、`diesel_platform`（L1/L2）、`diesel_localization`（L3） |
 | **第三方** | CMake ≥ 3.16、C++17 |
 
 ## 接口
@@ -192,26 +192,26 @@ python3 ros/smoke_nav_node.py     # 5 秒内收到 |v| > 0.1 m/s 即 PASS
 
 | 头文件 | 命名空间 | 公共类型 / 函数 | 契约 |
 |---|---|---|---|
-| `foray/nav/types.hpp` | `foray::nav` | `Vec2` `Pose2` `Side` **`UnitKind`** `Capability` `TraversalProfile` `NavGoal` `NavStatus` `NavError` `Path` `DynamicObstacle` `VelocityCommand` | 失败必须带原因；动态障碍只按几何消费，**不做敌我识别**；兵种只换数值、不改接口 |
-| `foray/nav/costmap_view.hpp` | `foray::nav` | `CostmapView` | 只读快照；代价**数值越小越划算**；`data()/stride()` 供热路径直接寻址 |
-| `foray/nav/planner.hpp` | `foray::nav` | `GlobalPlanner` `PlanningOptions` | 纯函数式；代价必须当**边权重**用；必须遵守预算，不许阻塞 |
-| `foray/nav/controller.hpp` | `foray::nav` | `LocalController` | 有状态；输出前必须限幅；**到达判定由状态机负责** |
+| `diesel/nav/types.hpp` | `diesel::nav` | `Vec2` `Pose2` `Side` **`UnitKind`** `Capability` `TraversalProfile` `NavGoal` `NavStatus` `NavError` `Path` `DynamicObstacle` `VelocityCommand` | 失败必须带原因；动态障碍只按几何消费，**不做敌我识别**；兵种只换数值、不改接口 |
+| `diesel/nav/costmap_view.hpp` | `diesel::nav` | `CostmapView` | 只读快照；代价**数值越小越划算**；`data()/stride()` 供热路径直接寻址 |
+| `diesel/nav/planner.hpp` | `diesel::nav` | `GlobalPlanner` `PlanningOptions` | 纯函数式；代价必须当**边权重**用；必须遵守预算，不许阻塞 |
+| `diesel/nav/controller.hpp` | `diesel::nav` | `LocalController` | 有状态；输出前必须限幅；**到达判定由状态机负责** |
 
 ## 纪律
 
-- **只做寻路**：敌我识别归 `foray_vision`，定位与地图归 `foray_localization`，机间通信本赛季不允许；
+- **只做寻路**：敌我识别归 `diesel_vision`，定位与地图归 `diesel_localization`，机间通信本赛季不允许；
 - **激光只参与定位**，不进代价图、不做地形分析；
 - 不用在线 SLAM；地图是离线资产，随赛季版本化；
 - 动态障碍只按几何消费，**不解释语义**；
 - **兵种接口预留**：`Capability::kind` 已有哨兵 / 步兵 / 重装三个取值，但本仓**只消费哨兵**的数值；步兵与重装只是把数值换成它们的，接口不变（2026-11-02，评审意见）；
-- 依赖方向见 `.foray-layer`；本仓不得依赖 `foray_robots`。
+- 依赖方向见 `.diesel-layer`；本仓不得依赖 `diesel_robots`。
 
 ## 上下游
 
 | 方向 | 对象 |
 |---|---|
-| **上游**（本仓依赖谁） | `foray_interfaces` · `foray_platform` · `foray_localization` |
-| **下游**（谁依赖本仓） | `foray_robots` · `foray_ws` |
+| **上游**（本仓依赖谁） | `diesel_interfaces` · `diesel_platform` · `diesel_localization` |
+| **下游**（谁依赖本仓） | `diesel_robots` · `diesel_ws` |
 
 ## 设计文档
 

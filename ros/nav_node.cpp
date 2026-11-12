@@ -27,7 +27,7 @@
 //   regions_file  区域表（隧道）；空表示不用
 //   control_rate  控制周期（Hz），默认 20
 //
-// 设计取舍：位姿直接吃 odom，不做 TF 树——定位模块（foray_localization）还没接，
+// 设计取舍：位姿直接吃 odom，不做 TF 树——定位模块（diesel_localization）还没接，
 // 先保证「地图 + 位姿 + 目标 → 速度指令」这条最小闭环。接定位时只换这一处。
 
 #include <algorithm>
@@ -42,17 +42,17 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
 
-#include "foray/nav/costmap.hpp"
-#include "foray/nav/nav_engine.hpp"
-#include "foray/nav/params.hpp"
-#include "foray/nav/regions.hpp"
+#include "diesel/nav/costmap.hpp"
+#include "diesel/nav/nav_engine.hpp"
+#include "diesel/nav/params.hpp"
+#include "diesel/nav/regions.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 class NavNode : public rclcpp::Node {
   public:
-    NavNode() : rclcpp::Node("foray_navigation") {
+    NavNode() : rclcpp::Node("diesel_navigation") {
         params_file_ = declare_parameter<std::string>("params_file", "");
         robot_file_ = declare_parameter<std::string>("robot_file", "");
         regions_file_ = declare_parameter<std::string>("regions_file", "");
@@ -213,15 +213,15 @@ class NavNode : public rclcpp::Node {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
 int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
     try {
-        auto node = std::make_shared<foray::nav::NavNode>();
+        auto node = std::make_shared<diesel::nav::NavNode>();
         rclcpp::spin(node);
     } catch (const std::exception& e) {
-        RCLCPP_FATAL(rclcpp::get_logger("foray_navigation"), "节点启动失败：%s", e.what());
+        RCLCPP_FATAL(rclcpp::get_logger("diesel_navigation"), "节点启动失败：%s", e.what());
         rclcpp::shutdown();
         return 1;
     }

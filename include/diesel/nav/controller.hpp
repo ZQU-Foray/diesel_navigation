@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__CONTROLLER_HPP_
-#define FORAY__NAV__CONTROLLER_HPP_
+#ifndef DIESEL__NAV__CONTROLLER_HPP_
+#define DIESEL__NAV__CONTROLLER_HPP_
 
-#include "foray/nav/types.hpp"
+#include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 局部控制器接口：给当前位姿、一条路径和周期，出一个底盘速度指令。
@@ -56,6 +56,6 @@ class LocalController {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
-#endif // FORAY__NAV__CONTROLLER_HPP_
+#endif // DIESEL__NAV__CONTROLLER_HPP_

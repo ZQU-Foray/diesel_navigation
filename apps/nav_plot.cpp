@@ -31,8 +31,8 @@
 #include <string>
 #include <vector>
 
-#include "foray/nav/costmap_view.hpp"
-#include "foray/nav/grid_map.hpp"
+#include "diesel/nav/costmap_view.hpp"
+#include "diesel/nav/grid_map.hpp"
 
 namespace {
 
@@ -54,16 +54,16 @@ void usage() {
 
 /// 代价 → 颜色。低代价（偏好）偏蓝，高代价（膨胀 → 致死）越来越深。
 Rgb color_of_cost(unsigned char cost) {
-    if (cost == foray::nav::kCostPreferred) {
+    if (cost == diesel::nav::kCostPreferred) {
         return Rgb{190, 220, 250};
     }
-    if (cost == foray::nav::kCostFree) {
+    if (cost == diesel::nav::kCostFree) {
         return Rgb{245, 245, 245};
     }
-    if (cost == foray::nav::kCostLethal) {
+    if (cost == diesel::nav::kCostLethal) {
         return Rgb{35, 35, 45};
     }
-    if (cost == foray::nav::kCostUnknown) {
+    if (cost == diesel::nav::kCostUnknown) {
         return Rgb{120, 120, 135};
     }
     // 膨胀带 2..252：离致死格越远越亮。252 最暗，但比致死浅，免得和墙混成一片。
@@ -235,7 +235,7 @@ int main(int argc, char** argv) {
         scale = 1;
     }
 
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     if (!map.load_from_yaml(map_yaml, &error)) {
         std::printf("地图加载失败: %s\n", error.c_str());
@@ -247,7 +247,7 @@ int main(int argc, char** argv) {
     const int img_w = cell_w * scale;
     const int img_h = cell_h * scale;
     const double res = map.resolution();
-    const foray::nav::Vec2 origin = map.origin();
+    const diesel::nav::Vec2 origin = map.origin();
 
     std::vector<Rgb> image(static_cast<size_t>(img_w) * static_cast<size_t>(img_h));
     for (int y = 0; y < cell_h; ++y) {

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__COSTMAP_VIEW_HPP_
-#define FORAY__NAV__COSTMAP_VIEW_HPP_
+#ifndef DIESEL__NAV__COSTMAP_VIEW_HPP_
+#define DIESEL__NAV__COSTMAP_VIEW_HPP_
 
 #include <cstdint>
 
-#include "foray/nav/types.hpp"
+#include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 代价编码：**数值越小越划算**，与语义顺序一致（按评审意见统一）。
@@ -102,6 +102,6 @@ class CostmapView {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
-#endif // FORAY__NAV__COSTMAP_VIEW_HPP_
+#endif // DIESEL__NAV__COSTMAP_VIEW_HPP_

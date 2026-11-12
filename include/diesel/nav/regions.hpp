@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__REGIONS_HPP_
-#define FORAY__NAV__REGIONS_HPP_
+#ifndef DIESEL__NAV__REGIONS_HPP_
+#define DIESEL__NAV__REGIONS_HPP_
 
 #include <string>
 #include <vector>
 
-#include "foray/nav/costmap.hpp"
-#include "foray/nav/types.hpp"
+#include "diesel/nav/costmap.hpp"
+#include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 地图上的一块矩形区域（世界坐标，米）。
@@ -56,6 +56,6 @@ void apply_preferred_regions(Costmap& map, const CostmapView& source,
                              const std::vector<RectRegion>& regions);
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
-#endif // FORAY__NAV__REGIONS_HPP_
+#endif // DIESEL__NAV__REGIONS_HPP_

@@ -20,7 +20,7 @@
 #include <cstdio>
 #include <string>
 
-#include "foray/nav/params.hpp"
+#include "diesel/nav/params.hpp"
 
 namespace {
 
@@ -38,7 +38,7 @@ bool contains(const std::string& haystack, const std::string& needle) {
 }
 
 void test_defaults_match_struct_defaults() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
 
     check(params.engine.robot_radius == 0.32, "engine.robot_radius default 0.32 (593 mm 车体)");
     check(params.engine.max_replans == 3, "engine.max_replans default 3");
@@ -48,7 +48,7 @@ void test_defaults_match_struct_defaults() {
 }
 
 void test_parse_overrides_numbers_and_bools() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     std::string error;
     const char* text = "# 注释行\n"
                        "\n"
@@ -57,7 +57,7 @@ void test_parse_overrides_numbers_and_bools() {
                        "astar.smooth: false\n"
                        "pursuit.max_linear: 1.75\n";
 
-    check(foray::nav::parse_params_text(text, &params, &error, "<test>"), "parse ok");
+    check(diesel::nav::parse_params_text(text, &params, &error, "<test>"), "parse ok");
     check(error.empty(), "no error text");
     check(params.engine.robot_radius == 0.31, "robot_radius overridden");
     check(params.engine.max_replans == 5, "max_replans overridden");
@@ -69,74 +69,74 @@ void test_parse_overrides_numbers_and_bools() {
 
 /// 两级：先 shared，再 robot——robot 只覆盖它写到的键。
 void test_two_level_override() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     std::string error;
 
     const char* shared = "engine.robot_radius: 0.25\npursuit.max_linear: 2.5\n";
     const char* robot = "engine.robot_radius: 0.40\n";
 
-    check(foray::nav::parse_params_text(shared, &params, &error, "<shared>"), "shared parses");
-    check(foray::nav::parse_params_text(robot, &params, &error, "<robot>"), "robot parses");
+    check(diesel::nav::parse_params_text(shared, &params, &error, "<shared>"), "shared parses");
+    check(diesel::nav::parse_params_text(robot, &params, &error, "<robot>"), "robot parses");
     check(params.engine.robot_radius == 0.40, "robot overrides shared");
     check(params.pursuit.max_linear == 2.5, "shared value survives robot layer");
 }
 
 void test_unknown_key_is_error() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     std::string error;
-    check(!foray::nav::parse_params_text("engine.robot_radiuz: 0.3\n", &params, &error, "x.yaml"),
+    check(!diesel::nav::parse_params_text("engine.robot_radiuz: 0.3\n", &params, &error, "x.yaml"),
           "typo rejected");
     check(contains(error, "engine.robot_radiuz"), "error names the bad key");
     check(contains(error, "x.yaml"), "error names the file");
 }
 
 void test_bad_number_is_error() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     std::string error;
-    check(!foray::nav::parse_params_text("engine.robot_radius: abc\n", &params, &error, "x.yaml"),
+    check(!diesel::nav::parse_params_text("engine.robot_radius: abc\n", &params, &error, "x.yaml"),
           "non-numeric rejected");
     check(contains(error, "engine.robot_radius"), "error names the key");
 }
 
 void test_missing_colon_is_error() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     std::string error;
-    check(!foray::nav::parse_params_text("engine.robot_radius 0.3\n", &params, &error, "x.yaml"),
+    check(!diesel::nav::parse_params_text("engine.robot_radius 0.3\n", &params, &error, "x.yaml"),
           "missing colon rejected");
     check(contains(error, ":1"), "error points at line 1");
 }
 
 void test_range_validation() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     std::string error;
 
-    check(!foray::nav::parse_params_text("engine.robot_radius: -0.2\n", &params, &error, "x.yaml"),
+    check(!diesel::nav::parse_params_text("engine.robot_radius: -0.2\n", &params, &error, "x.yaml"),
           "negative radius rejected");
 
-    foray::nav::NavParams params2;
-    check(!foray::nav::parse_params_text("engine.creep_scale: 1.5\n", &params2, &error, "x.yaml"),
+    diesel::nav::NavParams params2;
+    check(!diesel::nav::parse_params_text("engine.creep_scale: 1.5\n", &params2, &error, "x.yaml"),
           "creep_scale above 1 rejected");
 
-    foray::nav::NavParams params3;
+    diesel::nav::NavParams params3;
     check(
-        !foray::nav::parse_params_text("pursuit.curvature_max: 0.2\n", &params3, &error, "x.yaml"),
+        !diesel::nav::parse_params_text("pursuit.curvature_max: 0.2\n", &params3, &error, "x.yaml"),
         "curvature_max below curvature_min rejected");
 }
 
 void test_missing_file_is_error() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     std::string error;
-    check(!foray::nav::load_params_file("config/__no_such_file__.yaml", &params, &error),
+    check(!diesel::nav::load_params_file("config/__no_such_file__.yaml", &params, &error),
           "missing file rejected");
     check(contains(error, "__no_such_file__"), "error names the missing file");
 }
 
 /// 仓库里真实的两份配置必须能读通——否则「文档里写的参数」和「能跑的参数」会悄悄分叉。
 void test_repo_config_files_load() {
-    foray::nav::NavParams params;
+    diesel::nav::NavParams params;
     std::string error;
     const bool ok =
-        foray::nav::load_params("config/shared.yaml", "config/rmul_2027.yaml", &params, &error);
+        diesel::nav::load_params("config/shared.yaml", "config/rmul_2027.yaml", &params, &error);
     if (!ok) {
         std::printf("NOTE: 仓库配置没找到（在构建目录里跑测试时正常）：%s\n", error.c_str());
         return; // 构建目录不是仓库根时不算失败

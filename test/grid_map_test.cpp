@@ -20,9 +20,9 @@
 #include <string>
 #include <vector>
 
-#include "foray/nav/grid_map.hpp"
+#include "diesel/nav/grid_map.hpp"
 
-using foray::nav::MapMeta;
+using diesel::nav::MapMeta;
 
 namespace {
 
@@ -74,33 +74,33 @@ void test_yaml_parse() {
                              "free_thresh: 0.196\n";
     MapMeta meta;
     std::string error;
-    check(foray::nav::parse_map_meta(yaml, &meta, &error), "yaml parse ok");
+    check(diesel::nav::parse_map_meta(yaml, &meta, &error), "yaml parse ok");
     check(meta.image_path == "field.pgm", "yaml image");
     check(near(meta.resolution, 0.05), "yaml resolution");
     check(near(meta.origin_x, -1.5) && near(meta.origin_y, 2.5), "yaml origin");
 
     // 缺 resolution 必须失败
     MapMeta bad;
-    check(!foray::nav::parse_map_meta("image: x.pgm\n", &bad, &error),
+    check(!diesel::nav::parse_map_meta("image: x.pgm\n", &bad, &error),
           "yaml without resolution fails");
     // 旋转 origin 必须失败（本仓不支持）
     MapMeta rotated;
-    check(!foray::nav::parse_map_meta("image: x.pgm\nresolution: 0.05\norigin: [0,0,1.57]\n",
-                                      &rotated, &error),
+    check(!diesel::nav::parse_map_meta("image: x.pgm\nresolution: 0.05\norigin: [0,0,1.57]\n",
+                                       &rotated, &error),
           "rotated origin rejected");
 }
 
 void test_p5_and_flip() {
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     check(map.load_from_pgm_bytes(make_pgm_p5(), make_meta(), &error), "p5 load ok");
     check(map.width() == 4 && map.height() == 3, "p5 size");
     check(map.loaded(), "loaded flag");
 
     // 图像第 1 行第 2 列是黑的；翻转后 iy = 3-1-1 = 1，ix = 2。
-    check(map.cost_at(2, 1) == foray::nav::kCostLethal, "occupied cell flipped to grid row 1");
-    check(map.cost_at(2, 2) == foray::nav::kCostFree, "cell above is free");
-    check(map.cost_at(2, 0) == foray::nav::kCostFree, "cell below is free");
+    check(map.cost_at(2, 1) == diesel::nav::kCostLethal, "occupied cell flipped to grid row 1");
+    check(map.cost_at(2, 2) == diesel::nav::kCostFree, "cell above is free");
+    check(map.cost_at(2, 0) == diesel::nav::kCostFree, "cell below is free");
 }
 
 void test_p2_ascii() {
@@ -111,16 +111,16 @@ void test_p2_ascii() {
                              "255 255 255\n"
                              "255   0 255\n";
     std::vector<uint8_t> bytes(text.begin(), text.end());
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     MapMeta meta = make_meta();
     check(map.load_from_pgm_bytes(bytes, meta, &error), "p2 load ok");
     check(map.width() == 3 && map.height() == 2, "p2 size");
-    check(map.cost_at(1, 0) == foray::nav::kCostLethal, "p2 occupied at bottom row");
+    check(map.cost_at(1, 0) == diesel::nav::kCostLethal, "p2 occupied at bottom row");
 }
 
 void test_unknown_and_bounds() {
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     MapMeta meta = make_meta();
     // 127 落在两个阈值之间 => 未知（0.502）
@@ -129,25 +129,25 @@ void test_unknown_and_bounds() {
     bytes.push_back(127);
     bytes.push_back(255);
     check(map.load_from_pgm_bytes(bytes, meta, &error), "gray load ok");
-    check(map.cost_at(0, 0) == foray::nav::kCostUnknown, "mid gray is unknown");
-    check(map.cost_at(1, 0) == foray::nav::kCostFree, "white is free");
-    check(map.cost_at(-1, 0) == foray::nav::kCostUnknown, "negative index unknown");
-    check(map.cost_at(99, 0) == foray::nav::kCostUnknown, "out of range unknown");
+    check(map.cost_at(0, 0) == diesel::nav::kCostUnknown, "mid gray is unknown");
+    check(map.cost_at(1, 0) == diesel::nav::kCostFree, "white is free");
+    check(map.cost_at(-1, 0) == diesel::nav::kCostUnknown, "negative index unknown");
+    check(map.cost_at(99, 0) == diesel::nav::kCostUnknown, "out of range unknown");
     check(!map.passable(0, 0), "unknown is not passable");
 }
 
 void test_world_grid_roundtrip() {
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     check(map.load_from_pgm_bytes(make_pgm_p5(), make_meta(), &error), "roundtrip load");
 
     int ix = -1;
     int iy = -1;
     // origin (1.0, 2.0)、0.05 米/格：格 (0,0) 覆盖 [1.00,1.05) x [2.00,2.05)
-    check(map.world_to_grid(foray::nav::Vec2{1.01, 2.01}, &ix, &iy), "world to grid in range");
+    check(map.world_to_grid(diesel::nav::Vec2{1.01, 2.01}, &ix, &iy), "world to grid in range");
     check(ix == 0 && iy == 0, "world to grid (0,0)");
 
-    foray::nav::Vec2 center{};
+    diesel::nav::Vec2 center{};
     check(map.grid_to_world(0, 0, &center), "grid to world");
     check(near(center.x, 1.025) && near(center.y, 2.025), "cell center is half a cell in");
 
@@ -157,9 +157,9 @@ void test_world_grid_roundtrip() {
     check(back_x == 0 && back_y == 0, "roundtrip stable");
 
     // 地图外
-    check(!map.world_to_grid(foray::nav::Vec2{0.0, 2.0}, &ix, &iy), "outside map rejected");
+    check(!map.world_to_grid(diesel::nav::Vec2{0.0, 2.0}, &ix, &iy), "outside map rejected");
     // 边界内侧最后一个格：x 上界 = 1.0 + 4*0.05 = 1.2
-    check(map.world_to_grid(foray::nav::Vec2{1.199, 2.001}, &ix, &iy), "last column reachable");
+    check(map.world_to_grid(diesel::nav::Vec2{1.199, 2.001}, &ix, &iy), "last column reachable");
     check(ix == 3, "last column index");
 }
 
@@ -173,15 +173,15 @@ void test_pgm_maxval_is_normalized() {
         // 两个像素都是"最大亮度" = 全是自由
         bytes.push_back(static_cast<uint8_t>(maxval));
         bytes.push_back(static_cast<uint8_t>(maxval));
-        foray::nav::GridMap map;
+        diesel::nav::GridMap map;
         std::string error;
         MapMeta meta = make_meta();
         char what[96];
         std::snprintf(what, sizeof(what), "maxval=%d loads", maxval);
         check(map.load_from_pgm_bytes(bytes, meta, &error), what);
         std::snprintf(what, sizeof(what), "maxval=%d white is free", maxval);
-        check(map.cost_at(0, 0) == foray::nav::kCostFree &&
-                  map.cost_at(1, 0) == foray::nav::kCostFree,
+        check(map.cost_at(0, 0) == diesel::nav::kCostFree &&
+                  map.cost_at(1, 0) == diesel::nav::kCostFree,
               what);
     }
 }
@@ -191,7 +191,7 @@ void test_truncated_huge_pgm_is_rejected() {
     const std::string header = "P5\n30000 30000\n255\n";
     std::vector<uint8_t> bytes(header.begin(), header.end());
     bytes.push_back(255); // 只给一个像素
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     MapMeta meta = make_meta();
     check(!map.load_from_pgm_bytes(bytes, meta, &error), "truncated huge pgm rejected");
@@ -205,12 +205,12 @@ void test_pgm_crlf_header() {
     std::vector<uint8_t> bytes(header.begin(), header.end());
     bytes.push_back(0);   // 黑 = 障碍
     bytes.push_back(255); // 白 = 自由
-    foray::nav::GridMap map;
+    diesel::nav::GridMap map;
     std::string error;
     MapMeta meta = make_meta();
     check(map.load_from_pgm_bytes(bytes, meta, &error), "crlf: loads");
-    check(map.cost_at(0, 0) == foray::nav::kCostLethal, "crlf: first pixel is black");
-    check(map.cost_at(1, 0) == foray::nav::kCostFree, "crlf: second pixel is white");
+    check(map.cost_at(0, 0) == diesel::nav::kCostLethal, "crlf: first pixel is black");
+    check(map.cost_at(1, 0) == diesel::nav::kCostFree, "crlf: second pixel is white");
 }
 
 /// GM-4：行内注释不该粘进 image 路径；negate 的大小写都要认。
@@ -221,9 +221,9 @@ void test_yaml_inline_comment_and_true_case() {
                              "negate: True\n"
                              "occupied_thresh: 0.65\n"
                              "free_thresh: 0.196\n";
-    foray::nav::MapMeta meta;
+    diesel::nav::MapMeta meta;
     std::string error;
-    check(foray::nav::parse_map_meta(yaml, &meta, &error), "yaml: inline comment parses");
+    check(diesel::nav::parse_map_meta(yaml, &meta, &error), "yaml: inline comment parses");
     check(meta.image_path == "map.pgm", "yaml: inline comment stripped from image path");
     check(meta.negate == 1, "yaml: negate accepts True");
 }
@@ -235,9 +235,9 @@ void test_yaml_rejects_inverted_thresholds() {
                              "origin: [0.0, 0.0, 0.0]\n"
                              "occupied_thresh: 0.1\n"
                              "free_thresh: 0.9\n";
-    foray::nav::MapMeta meta;
+    diesel::nav::MapMeta meta;
     std::string error;
-    check(!foray::nav::parse_map_meta(yaml, &meta, &error), "yaml: inverted thresholds rejected");
+    check(!diesel::nav::parse_map_meta(yaml, &meta, &error), "yaml: inverted thresholds rejected");
 }
 
 } // namespace

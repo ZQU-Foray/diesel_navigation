@@ -1,4 +1,4 @@
-# foray_navigation · 通用参数（shared）
+# diesel_navigation · 通用参数（shared）
 #
 # 这是「本仓通用」的一层；车种 / 赛季的差异写到 `<robot>.yaml` 里覆盖它。
 # 加载顺序：shared.yaml → <robot>.yaml（后者覆盖前者）。

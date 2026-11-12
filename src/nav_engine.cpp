@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "foray/nav/nav_engine.hpp"
+#include "diesel/nav/nav_engine.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 namespace {
@@ -457,4 +457,4 @@ NavError NavEngine::step(const CostmapView& map, const Pose2& pose, double dt,
 }
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel

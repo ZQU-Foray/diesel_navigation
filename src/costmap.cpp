@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "foray/nav/costmap.hpp"
+#include "diesel/nav/costmap.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-namespace foray {
+namespace diesel {
 namespace nav {
 namespace {
 
@@ -433,4 +433,4 @@ int Costmap::lethal_count() const {
 }
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel

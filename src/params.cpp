@@ -19,10 +19,10 @@
 //   2. `#` 之后是注释（不区分它是否在引号里——值里不需要 `#`）；
 //   3. 空行忽略。
 //
-// 为什么不引第三方库：本仓（见 .foray-layer / CMakeLists）的纪律是只依赖标准库，
+// 为什么不引第三方库：本仓（见 .diesel-layer / CMakeLists）的纪律是只依赖标准库，
 // 而这里要的全部能力就是一个 map。
 
-#include "foray/nav/params.hpp"
+#include "diesel/nav/params.hpp"
 
 #include <cerrno>
 #include <cstdlib>
@@ -30,7 +30,7 @@
 #include <sstream>
 #include <string>
 
-namespace foray {
+namespace diesel {
 namespace nav {
 namespace {
 
@@ -392,4 +392,4 @@ bool load_params(const std::string& shared_path, const std::string& robot_path, 
 }
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel

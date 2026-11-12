@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__COSTMAP_HPP_
-#define FORAY__NAV__COSTMAP_HPP_
+#ifndef DIESEL__NAV__COSTMAP_HPP_
+#define DIESEL__NAV__COSTMAP_HPP_
 
 #include <cstdint>
 #include <string>
 #include <vector>
 
-#include "foray/nav/costmap_view.hpp"
-#include "foray/nav/types.hpp"
+#include "diesel/nav/costmap_view.hpp"
+#include "diesel/nav/types.hpp"
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 分层代价图：把静态层、禁行层、膨胀层、动态层叠成一张**可读快照**。
@@ -124,6 +124,6 @@ class Costmap : public CostmapView {
 };
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
-#endif // FORAY__NAV__COSTMAP_HPP_
+#endif // DIESEL__NAV__COSTMAP_HPP_

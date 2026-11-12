@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FORAY__NAV__TYPES_HPP_
-#define FORAY__NAV__TYPES_HPP_
+#ifndef DIESEL__NAV__TYPES_HPP_
+#define DIESEL__NAV__TYPES_HPP_
 
 #include <cstdint>
 #include <string>
 #include <vector>
 
-namespace foray {
+namespace diesel {
 namespace nav {
 
 /// 场地平面上的点，单位米，坐标系为**场地坐标系**（原点对齐规则定义的原点，不是开机位置）。
@@ -63,7 +63,7 @@ struct Capability {
     bool can_climb_highland{false};
 };
 
-/// 通行档案：阵营 × 能力，由 `foray_robots` 侧的 YAML 提供，本仓只消费。
+/// 通行档案：阵营 × 能力，由 `diesel_robots` 侧的 YAML 提供，本仓只消费。
 struct TraversalProfile {
     Side side{Side::kRed};
     Capability capability{};
@@ -109,7 +109,7 @@ enum class NavError {
 using Path = std::vector<Pose2>;
 
 /// 动态障碍：只按几何消费。
-/// @note 敌我识别属 `foray_vision`，本仓不解释语义，因此没有 label 字段。
+/// @note 敌我识别属 `diesel_vision`，本仓不解释语义，因此没有 label 字段。
 struct DynamicObstacle {
     Vec2 center{};
     /// 保守外接半径（米）。
@@ -179,6 +179,6 @@ inline const char* to_string(UnitKind kind) {
 }
 
 } // namespace nav
-} // namespace foray
+} // namespace diesel
 
-#endif // FORAY__NAV__TYPES_HPP_
+#endif // DIESEL__NAV__TYPES_HPP_
